@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="background-animation"></div>
+    <div class="container main-content">
+        <h1 class="main-title">Telegram Analytics</h1>
+        <p class="subtitle">Анализ Telegram-чатов</p>
+
+        <form id="chatForm">
+            <div class="mb-3">
+                <label for="chat_name" class="form-label">Имя чата или ID:</label>
+                <input type="text" class="form-control" id="chat_name" name="chat_name" required placeholder="Введите ID или @username">
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label for="start_date" class="form-label">Дата начала:</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date">
+                </div>
+                <div class="col-md-6">
+                    <label for="end_date" class="form-label">Дата окончания:</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="min_word_length" class="form-label">Минимальная длина слова:</label>
+                <input type="number" class="form-control" id="min_word_length" name="min_word_length" value="5" min="1">
+            </div>
+
+            <button type="submit" class="btn btn-telegram">
+                <span class="button-text">Анализировать</span>
+            </button>
+        </form>
+
+        <div class="progress-container mt-4">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.10.4/gsap.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('chatForm');
+            const progressBar = document.getElementById('progressBar');
+            const progressContainer = document.querySelector('.progress-container');
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                progressContainer.style.display = 'block';
+
+                const ws = new WebSocket(`ws://${window.location.host}/ws`);
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+
+                    if (data.status === 'loading') {
+                        progressBar.style.width = `${data.progress}%`;
+                    } else if (data.status === 'completed') {
+                        window.location.href = `/get_history?filename=${data.filename}&min_word_length=${document.getElementById('min_word_length').value}`;
+                    } else if (data.status === 'error') {
+                        alert(`Ошибка: ${data.message}`);
+                    }
+                };
+
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({
+                        chat_name: document.getElementById('chat_name').value,
+                        start_date: document.getElementById('start_date').value,
+                        end_date: document.getElementById('end_date').value
+                    }));
+                };
+            });
+
+            gsap.from(".main-title", {duration: 1, y: -50, opacity: 0});
+            gsap.from(".subtitle", {duration: 1, y: 30, opacity: 0, delay: 0.3});
+        });
+    </script>
+</body>
+</html>
