@@ -36,49 +36,98 @@
             display: none;
             margin-top: 20px;
         }
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto 30px;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <h1 class="text-center mb-4">Telegram Analytics</h1>
-                        
-                        <form id="chatForm">
-                            <div class="mb-3">
-                                <label for="chat_name" class="form-label">Имя чата или ID:</label>
-                                <input type="text" class="form-control" id="chat_name" required 
-                                       placeholder="Например: @durov или 123456789">
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="start_date" class="form-label">Дата начала (необязательно):</label>
-                                    <input type="date" class="form-control" id="start_date">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="end_date" class="form-label">Дата окончания (необязательно):</label>
-                                    <input type="date" class="form-control" id="end_date">
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="min_word_length" class="form-label">Минимальная длина слова:</label>
-                                <input type="number" class="form-control" id="min_word_length" value="5" min="1">
-                            </div>
-
-                            <button type="submit" class="btn btn-telegram w-100 py-2">
-                                Анализировать
-                            </button>
-                        </form>
-
-                        <div class="progress-container mt-4" id="progressContainer">
-                            <div class="progress-bar" id="progressBar">0%</div>
+        <!-- Блок аутентификации -->
+        <div class="auth-container" id="authSection">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h3 class="text-center mb-4" id="authTitle">Вход</h3>
+                    
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="username" placeholder="Имя пользователя" required>
                         </div>
+                        <div class="mb-3">
+                            <input type="password" class="form-control" id="password" placeholder="Пароль" required>
+                        </div>
+                        <button type="submit" class="btn btn-telegram w-100 mb-2">Войти</button>
+                        <button type="button" class="btn btn-link w-100" id="toggleRegister">Зарегистрироваться</button>
+                    </form>
+                    
+                    <form id="registerForm" class="hidden">
+                        <div class="mb-3">
+                            <input type="text" class="form-control" id="regUsername" placeholder="Имя пользователя" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="email" class="form-control" id="regEmail" placeholder="Email" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="password" class="form-control" id="regPassword" placeholder="Пароль" required>
+                        </div>
+                        <button type="submit" class="btn btn-telegram w-100 mb-2">Зарегистрироваться</button>
+                        <button type="button" class="btn btn-link w-100" id="toggleLogin">Уже есть аккаунт? Войти</button>
+                    </form>
+                    
+                    <div class="alert alert-danger mt-3 hidden" id="authError"></div>
+                </div>
+            </div>
+        </div>
 
-                        <div class="alert alert-danger mt-3" id="errorAlert"></div>
+        <!-- Основной контент (видим только после аутентификации) -->
+        <div id="mainContent" class="hidden">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h1 class="mb-0">Telegram Analytics</h1>
+                                <button class="btn btn-outline-danger" id="logoutBtn">Выйти</button>
+                            </div>
+                            
+                            <form id="chatForm">
+                                <div class="mb-3">
+                                    <label for="chat_name" class="form-label">Имя чата или ID:</label>
+                                    <input type="text" class="form-control" id="chat_name" required 
+                                           placeholder="Например: @durov или 123456789">
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="start_date" class="form-label">Дата начала (необязательно):</label>
+                                        <input type="date" class="form-control" id="start_date">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="end_date" class="form-label">Дата окончания (необязательно):</label>
+                                        <input type="date" class="form-control" id="end_date">
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="min_word_length" class="form-label">Минимальная длина слова:</label>
+                                    <input type="number" class="form-control" id="min_word_length" value="5" min="1">
+                                </div>
+
+                                <button type="submit" class="btn btn-telegram w-100 py-2">
+                                    Анализировать
+                                </button>
+                            </form>
+
+                            <div class="progress-container mt-4" id="progressContainer">
+                                <div class="progress-bar" id="progressBar">0%</div>
+                            </div>
+
+                            <div class="alert alert-danger mt-3" id="errorAlert"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -86,6 +135,152 @@
     </div>
 
     <script>
+        // Элементы DOM
+        const authSection = document.getElementById('authSection');
+        const mainContent = document.getElementById('mainContent');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const toggleRegister = document.getElementById('toggleRegister');
+        const toggleLogin = document.getElementById('toggleLogin');
+        const authError = document.getElementById('authError');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const authTitle = document.getElementById('authTitle');
+        
+        // Функции аутентификации
+        async function login(username, password) {
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const response = await fetch('/auth/token', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    checkAuth();
+                } else {
+                    showAuthError('Неверное имя пользователя или пароль');
+                }
+            } catch (error) {
+                showAuthError('Ошибка соединения');
+                console.error('Login error:', error);
+            }
+        }
+        
+        async function register(username, email, password) {
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    showAuthMessage('Регистрация успешна! Войдите в систему', 'success');
+                    toggleForms();
+                } else {
+                    const error = await response.json();
+                    showAuthError(error.detail || 'Ошибка регистрации');
+                }
+            } catch (error) {
+                showAuthError('Ошибка соединения');
+                console.error('Registration error:', error);
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('access_token');
+            checkAuth();
+        }
+        
+        async function checkAuth() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                showAuth();
+                return;
+            }
+            
+            try {
+                const response = await fetch('/protected-route', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    showMainContent();
+                } else {
+                    localStorage.removeItem('access_token');
+                    showAuth();
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                showAuth();
+            }
+        }
+        
+        function showAuth() {
+            authSection.classList.remove('hidden');
+            mainContent.classList.add('hidden');
+        }
+        
+        function showMainContent() {
+            authSection.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        }
+        
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.remove('hidden', 'alert-success');
+            authError.classList.add('alert-danger');
+        }
+        
+        function showAuthMessage(message, type = 'success') {
+            authError.textContent = message;
+            authError.classList.remove('hidden', 'alert-danger');
+            authError.classList.add('alert-' + type);
+        }
+        
+        function toggleForms() {
+            loginForm.classList.toggle('hidden');
+            registerForm.classList.toggle('hidden');
+            authTitle.textContent = loginForm.classList.contains('hidden') ? 'Регистрация' : 'Вход';
+        }
+        
+        // Обработчики событий
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            login(username, password);
+        });
+        
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            register(username, email, password);
+        });
+        
+        toggleRegister.addEventListener('click', toggleForms);
+        toggleLogin.addEventListener('click', toggleForms);
+        logoutBtn.addEventListener('click', logout);
+        
+        // Оригинальный функционал Telegram Analytics
         document.getElementById('chatForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -104,13 +299,20 @@
             progressBar.style.width = '0%';
             progressBar.textContent = '0%';
             
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                showAuthError('Требуется авторизация');
+                return;
+            }
+            
             const ws = new WebSocket(`ws://${window.location.host}/ws`);
             
             ws.onopen = function() {
                 ws.send(JSON.stringify({
                     chat_name: chatName,
                     start_date: startDate,
-                    end_date: endDate
+                    end_date: endDate,
+                    token: token
                 }));
             };
             
@@ -129,6 +331,10 @@
                     errorAlert.textContent = data.message;
                     errorAlert.style.display = 'block';
                     progressContainer.style.display = 'none';
+                    
+                    if (data.message.includes('авторизации')) {
+                        logout();
+                    }
                 }
             };
             
@@ -138,6 +344,9 @@
                 progressContainer.style.display = 'none';
             };
         });
+        
+        // Проверка аутентификации при загрузке
+        document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
 </html>

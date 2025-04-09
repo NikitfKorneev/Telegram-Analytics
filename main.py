@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, Request
+from fastapi import FastAPI, WebSocket, Request, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -9,29 +9,32 @@ import asyncio
 import json
 import os
 from datetime import datetime
-from utils import create_plots, count_words_in_file
+from auth.router import router as auth_router
+from auth.dependencies import get_current_active_user
+from auth.schemas import User
+from utils import count_words_in_file, create_plots
+from auth import models
+from auth.database import engine
 
+models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
+app.include_router(auth_router, prefix="/auth")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Telegram API (замените на свои реальные данные)
+# Telegram API
 api_id = 24612694
 api_hash = '830e613e5101bd49150bf208e29a1e4c'
 phone_number = '89160071580'
 session_name = 'my_session'
-
 client = TelegramClient(session_name, api_id, api_hash)
 
 async def start_telegram_client():
-    """Запускает Telegram-клиент при старте сервера"""
     try:
         await client.connect()
         if not await client.is_user_authorized():
             print("Отправка кода подтверждения...")
             await client.send_code_request(phone_number)
-            
-            # В продакшн нужно реализовать веб-интерфейс для ввода кода
             code = input("Введите код из Telegram: ")
             await client.sign_in(phone_number, code)
         return True
@@ -44,7 +47,6 @@ async def start_telegram_client():
         return False
 
 async def get_chat_history(chat_name, websocket, start_date=None, end_date=None):
-    """Загружает историю чата и передает прогресс в WebSocket."""
     try:
         if not client.is_connected():
             await client.connect()
@@ -111,7 +113,6 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
 
 @app.on_event("startup")
 async def startup_event():
-    """Запускаем Telegram-клиент при старте сервера"""
     if not await start_telegram_client():
         print("Не удалось авторизоваться в Telegram. Некоторые функции могут быть недоступны")
 
@@ -170,6 +171,10 @@ async def get_history(request: Request, filename: str, min_word_length: int = 5)
     except Exception as e:
         print(f"Error in get_history: {str(e)}")
         return RedirectResponse(url="/")
+
+@app.get("/protected-route")
+async def protected_route(current_user: User = Depends(get_current_active_user)):
+    return {"message": "This is a protected route", "user": current_user.username}
 
 if __name__ == "__main__":
     import uvicorn
