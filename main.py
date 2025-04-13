@@ -118,6 +118,10 @@ async def startup_event():
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    return templates.TemplateResponse("welcome.html", {"request": request}) #index.html
+
+@app.get("/welcome")
+async def welcome(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.websocket("/ws")
