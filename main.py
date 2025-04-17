@@ -1,7 +1,8 @@
-from fastapi import FastAPI, WebSocket, Request, Depends
+from fastapi import FastAPI, WebSocket, Request, Depends, Form, HTTPException, status
 from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError
 from telethon.tl.functions.messages import GetHistoryRequest
@@ -11,7 +12,10 @@ import os
 from datetime import datetime
 from auth.router import router as auth_router
 from auth.dependencies import get_current_active_user
-from auth.schemas import User
+from auth.schemas import User, UserCreate
+from auth import crud
+from auth.database import get_db
+from sqlalchemy.orm import Session
 from utils import count_words_in_file, create_plots
 from auth import models
 from auth.database import engine
@@ -118,7 +122,61 @@ async def startup_event():
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("welcome.html", {"request": request}) #index.html
+    return templates.TemplateResponse("welcome.html", {"request": request})
+
+@app.post("/auth/register")
+async def register_user(
+    request: Request,
+    name: str = Form(...),
+    username: str = Form(...),
+    email: str = Form(None),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    if password != confirm_password:
+        return templates.TemplateResponse(
+            "welcome.html",
+            {"request": request, "error": "Пароли не совпадают"},
+            status_code=400
+        )
+    
+    user = UserCreate(
+        username=username,
+        name=name,
+        email=email,
+        password=password
+    )
+    
+    try:
+        db_user = crud.create_user(db, user)
+        return RedirectResponse(url="/", status_code=303)
+    except Exception as e:
+        return templates.TemplateResponse(
+            "welcome.html",
+            {"request": request, "error": str(e)},
+            status_code=400
+        )
+
+@app.post("/auth/token")
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    user = crud.authenticate_user(db, username, password)
+    if not user:
+        return templates.TemplateResponse(
+            "welcome.html",
+            {"request": request, "error": "Неверное имя пользователя или пароль"},
+            status_code=401
+        )
+    
+    access_token = crud.create_access_token(data={"sub": user.username})
+    response = RedirectResponse(url="/welcome", status_code=303)
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}")
+    return response
 
 @app.get("/welcome")
 async def welcome(request: Request):

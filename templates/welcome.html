@@ -12,8 +12,8 @@
   <header class="header">
     <div class="logo">Semantic Analysis</div>
     <div class="auth-buttons">
-      <a href="#" id="open-login-modal" class="btn-secondary">Войти</a>
-      <a href="#" id="open-register-modal" class="btn-primary">Зарегистрироваться</a>
+      <a href="/welcome?form=login" class="btn-secondary">Войти</a>
+      <a href="/welcome?form=register" class="btn-primary">Зарегистрироваться</a>
       <button id="theme-toggle" class="btn-theme">🌙</button>
     </div>
   </header>
@@ -24,7 +24,7 @@
       <h1>Анализируйте цифровые дискурсы как профессионал</h1>
       <p>Собирайте, анализируйте и визуализируйте семантические структуры текстов за считанные минуты.</p>
       <div class="cta-buttons">
-        <a href="#" id="main-register-btn" class="btn-primary">Начать бесплатно</a>
+        <a href="/welcome?form=register" class="btn-primary">Начать бесплатно</a>
         <a href="#features" class="btn-secondary">Узнать больше</a>
       </div>
     </section>
@@ -61,34 +61,6 @@
   <footer class="footer">
     <p>&copy; 2025 Semantic Analysis. Все права защищены.</p>
   </footer>
-
-  <!-- Auth Modal -->
-  <div id="modal" class="modal">
-    <div class="modal-content">
-      <!-- Login Form -->
-      <form id="login-form" class="auth-form">
-        <h2>Вход</h2>
-        <input type="text" id="login-username" placeholder="Имя пользователя" required>
-        <input type="password" id="login-password" placeholder="Пароль" required>
-        <button type="submit" class="btn-primary">Войти</button>
-        <p>Нет аккаунта? <a href="#" id="switch-to-register">Зарегистрироваться</a></p>
-      </form>
-
-      <!-- Registration Form -->
-      <form id="register-form" class="auth-form hidden">
-        <h2>Регистрация</h2>
-        <input type="text" id="register-name" placeholder="Ваше имя" required>
-        <input type="text" id="register-username" placeholder="Имя пользователя" required>
-        <input type="email" id="register-email" placeholder="Email (необязательно)">
-        <input type="password" id="register-password" placeholder="Пароль" required>
-        <input type="password" id="confirm-password" placeholder="Подтвердите пароль" required>
-        <button type="submit" class="btn-primary">Зарегистрироваться</button>
-        <p>Уже есть аккаунт? <a href="#" id="switch-to-login">Войти</a></p>
-      </form>
-
-      <span class="close-btn">&times;</span>
-    </div>
-  </div>
 
   <script src="/static/js/script.js"></script>
 </body>
