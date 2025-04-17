@@ -5,7 +5,6 @@ from jose import jwt
 from passlib.context import CryptContext
 from .config import settings
 
-# Fix for bcrypt version reading error
 if not hasattr(bcrypt, '__about__'):
     bcrypt.__about__ = type('obj', (object,), {'__version__': '3.2.0'})
 

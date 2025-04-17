@@ -2,162 +2,178 @@
 const themeToggle = document.getElementById('theme-toggle');
 const body = document.body;
 
-// Проверяем сохраненную тему в localStorage
+// Проверяем сохраненную тему
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme === 'dark') {
-  body.classList.add('dark-theme');
-  themeToggle.textContent = '☀️'; // Иконка солнца для темной темы
+    body.classList.add('dark-theme');
+    themeToggle.textContent = '☀️';
 } else {
-  body.classList.remove('dark-theme');
-  themeToggle.textContent = '🌙'; // Иконка луны для светлой темы
+    themeToggle.textContent = '🌙';
 }
 
-// Переключение темы по клику
+// Обработчик переключения темы
 themeToggle.addEventListener('click', () => {
-  body.classList.toggle('dark-theme');
-
-  if (body.classList.contains('dark-theme')) {
-    localStorage.setItem('theme', 'dark'); // Сохраняем выбор в localStorage
-    themeToggle.textContent = '☀️'; // Иконка солнца
-  } else {
-    localStorage.setItem('theme', 'light'); // Сохраняем выбор в localStorage
-    themeToggle.textContent = '🌙'; // Иконка луны
-  }
+    body.classList.toggle('dark-theme');
+    const isDark = body.classList.contains('dark-theme');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
 });
 
-// Открытие модального окна (Вход)
-document.getElementById('open-login-modal').addEventListener('click', function () {
-  document.getElementById('modal').style.display = 'flex';
-  document.getElementById('register-form').classList.add('hidden');
-  document.getElementById('login-form').classList.remove('hidden');
+// Модальные окна
+document.getElementById('open-login-modal').addEventListener('click', () => {
+    document.getElementById('modal').style.display = 'flex';
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('login-form').classList.remove('hidden');
 });
 
-// Открытие модального окна (Регистрация)
-document.getElementById('open-register-modal').addEventListener('click', function () {
-  document.getElementById('modal').style.display = 'flex';
-  document.getElementById('login-form').classList.add('hidden');
-  document.getElementById('register-form').classList.remove('hidden');
+document.getElementById('open-register-modal').addEventListener('click', () => {
+    document.getElementById('modal').style.display = 'flex';
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.remove('hidden');
 });
 
-// Закрытие модального окна кнопкой "закрыть"
-document.querySelector('.close-btn').addEventListener('click', function () {
-  document.getElementById('modal').style.display = 'none';
+document.querySelector('.close-btn').addEventListener('click', () => {
+    document.getElementById('modal').style.display = 'none';
 });
 
-// Переключение между формами входа и регистрации
-document.getElementById('switch-to-register').addEventListener('click', function (e) {
-  e.preventDefault();
-  document.getElementById('login-form').classList.add('hidden');
-  document.getElementById('register-form').classList.remove('hidden');
-});
-
-document.getElementById('switch-to-login').addEventListener('click', function (e) {
-  e.preventDefault();
-  document.getElementById('register-form').classList.add('hidden');
-  document.getElementById('login-form').classList.remove('hidden');
-});
-
-// Проверка совпадения паролей при регистрации
-document.getElementById('register-form').addEventListener('submit', function (e) {
-  const password = document.getElementById('password').value;
-  const confirmPassword = document.getElementById('confirm-password').value;
-
-  if (password !== confirmPassword) {
-    e.preventDefault(); // Предотвращаем отправку формы
-    alert('Пароли не совпадают. Пожалуйста, попробуйте снова.');
-  }
-});
-
-// Закрытие модального окна при нажатии клавиши Esc
-document.addEventListener('keydown', function (event) {
-  // Проверяем, была ли нажата клавиша Esc
-  if (event.key === 'Escape' || event.keyCode === 27) {
-    const modal = document.getElementById('modal');
-    if (modal && modal.style.display === 'flex') {
-      modal.style.display = 'none'; // Закрываем модальное окно
-    }
-  }
-});
-
-// Логика для страницы личного кабинета
-if (window.location.pathname.includes('profile.html')) {
-  // Загрузка данных пользователя
-  const userName = localStorage.getItem('userName') || 'Пользователь';
-  const userEmail = localStorage.getItem('userEmail') || 'example@example.com';
-
-  document.getElementById('user-name').textContent = userName;
-  document.getElementById('user-email').textContent = userEmail;
-
-  // Кнопка "Выйти"
-  document.getElementById('logout-btn').addEventListener('click', (e) => {
+// Переключение между формами
+document.getElementById('switch-to-register').addEventListener('click', (e) => {
     e.preventDefault();
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-    window.location.href = 'index.html'; // Переход на главную страницу
-  });
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('register-form').classList.remove('hidden');
+});
 
-  // Кнопка "Редактировать профиль"
-  document.getElementById('edit-profile-btn').addEventListener('click', () => {
-    alert('Функция редактирования профиля пока недоступна.');
-  });
+document.getElementById('switch-to-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('register-form').classList.add('hidden');
+    document.getElementById('login-form').classList.remove('hidden');
+});
+
+// Закрытие по Esc
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        document.getElementById('modal').style.display = 'none';
+    }
+});
+
+// Функция для авторизованных запросов
+async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Ошибка запроса');
+    }
+    
+    return response.json();
 }
 
-// Логика для формы входа
-document.getElementById('login-form').addEventListener('submit', function (e) {
-  e.preventDefault();
-
-  const loginEmail = document.getElementById('login-email').value;
-  const loginPassword = document.getElementById('login-password').value;
-
-  // Пример проверки данных (замените на реальную логику аутентификации)
-  if (loginEmail && loginPassword) {
-    localStorage.setItem('userName', 'Имя пользователя'); // Пример имени
-    localStorage.setItem('userEmail', loginEmail); // Сохраняем email
-    window.location.href = 'profile.html'; // Переход в личный кабинет
-  } else {
-    alert('Неверный email или пароль. Попробуйте снова.');
-  }
-});
-
-// Логика для формы регистрации
-document.getElementById('register-form').addEventListener('submit', function (e) {
-  e.preventDefault();
-
-  const registerName = document.getElementById('register-name').value;
-  const registerEmail = document.getElementById('register-email').value;
-  const registerPassword = document.getElementById('register-password').value;
-  const confirmPassword = document.getElementById('confirm-password').value;
-
-  if (registerPassword !== confirmPassword) {
-    alert('Пароли не совпадают. Пожалуйста, попробуйте снова.');
-    return;
-  }
-
-  // Пример регистрации (замените на реальную логику)
-  localStorage.setItem('userName', registerName);
-  localStorage.setItem('userEmail', registerEmail);
-
-  alert('Регистрация успешна! Вы будете перенаправлены на страницу входа.');
-  document.getElementById('switch-to-login').click(); // Переключаемся на форму входа
-});
-
-
-
-document.querySelectorAll('.sidebar-nav a').forEach(link => {
-  link.addEventListener('click', function (e) {
+// Логин
+document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    // Убираем активный класс у всех ссылок
-    document.querySelectorAll('.sidebar-nav a').forEach(a => a.classList.remove('active'));
-
-    // Добавляем активный класс текущей ссылке
-    this.classList.add('active');
-
-    // Скрываем все разделы
-    document.querySelectorAll('.main-content section').forEach(section => section.classList.add('hidden'));
-
-    // Показываем выбранный раздел
-    const target = this.getAttribute('href').substring(1);
-    document.getElementById(target).classList.remove('hidden');
-  });
+    
+    const formData = new FormData(e.target);
+    const data = {
+        username: formData.get('login-username'),
+        password: formData.get('login-password'),
+        grant_type: 'password'
+    };
+    
+    try {
+        const response = await fetch('/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(data)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Ошибка входа');
+        }
+        
+        const { access_token } = await response.json();
+        localStorage.setItem('authToken', access_token);
+        window.location.href = '/profile';
+    } catch (error) {
+        alert(error.message);
+        console.error('Login error:', error);
+    }
 });
+
+// Регистрация
+document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    if (document.getElementById('register-password').value !== 
+        document.getElementById('confirm-password').value) {
+        alert('Пароли не совпадают');
+        return;
+    }
+    
+    const formData = new FormData(e.target);
+    const data = {
+        username: formData.get('register-username'),
+        password: formData.get('register-password'),
+        email: formData.get('register-email') || null,
+        name: formData.get('register-name')
+    };
+    
+    try {
+        await authFetch('/register', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        alert('Регистрация успешна! Теперь вы можете войти.');
+        document.getElementById('switch-to-login').click();
+    } catch (error) {
+        alert(error.message);
+        console.error('Registration error:', error);
+    }
+});
+
+// Проверка аутентификации
+async function checkAuth() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    try {
+        const user = await authFetch('/users/me');
+        updateAuthUI(user);
+    } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('authToken');
+    }
+}
+
+function updateAuthUI(user) {
+    const authButtons = document.querySelector('.auth-buttons');
+    authButtons.innerHTML = `
+        <span class="username">${user.username}</span>
+        <button id="logout-btn" class="btn-primary">Выйти</button>
+        <button id="theme-toggle" class="btn-theme">${body.classList.contains('dark-theme') ? '☀️' : '🌙'}</button>
+    `;
+    
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+    });
+}
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', checkAuth);
