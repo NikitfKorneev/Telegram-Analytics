@@ -4,21 +4,18 @@ from typing import List, Optional
 from . import models, schemas
 from .utils import get_password_hash, verify_password
 from fastapi import HTTPException
+from datetime import datetime
 
-def get_user(db: Session, username: str) -> Optional[models.User]:
-    """Получить пользователя по имени пользователя"""
-    return db.query(models.User).filter(models.User.username == username).first()
-
-def get_user_by_email(db: Session, email: str) -> Optional[models.User]:
-    """Получить пользователя по email"""
-    return db.query(models.User).filter(models.User.email == email).first()
-
-def get_user_by_id(db: Session, user_id: int) -> Optional[models.User]:
-    """Получить пользователя по ID"""
+def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[models.User]:
-    """Получить список пользователей с пагинацией"""
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 def search_users(db: Session, query: str) -> List[models.User]:
@@ -30,68 +27,34 @@ def search_users(db: Session, query: str) -> List[models.User]:
         )
     ).all()
 
-def create_user(db: Session, user: schemas.UserCreate) -> models.User:
-    """Создать нового пользователя"""
-    # Проверяем существующего пользователя по email
-    db_user_email = get_user_by_email(db, email=user.email)
-    if db_user_email:
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-    
-    # Проверяем существующего пользователя по username
-    db_user = get_user(db, username=user.username)
-    if db_user:
-        raise HTTPException(
-            status_code=400,
-            detail="Username already registered"
-        )
-    
-    # Get the default 'user' role
-    default_role = models.Role.get_default_role(db)
-    if not default_role:
-        raise HTTPException(status_code=500, detail="Default role not found")
-    
-    hashed_password = get_password_hash(user.password)
+def create_user(db: Session, user: schemas.UserCreate):
     db_user = models.User(
-        username=user.username,
         email=user.email,
-        hashed_password=hashed_password,
-        disabled=False,
-        role_id=default_role.id
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate) -> Optional[models.User]:
-    """Обновить информацию о пользователе"""
-    db_user = get_user_by_id(db, user_id)
-    if not db_user:
-        return None
-    
-    update_data = user_update.dict(exclude_unset=True)
-    if "password" in update_data:
-        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
-    
-    for field, value in update_data.items():
-        setattr(db_user, field, value)
-    
-    db.commit()
-    db.refresh(db_user)
+def update_user(db: Session, user_id: int, user: schemas.UserUpdate):
+    db_user = get_user(db, user_id)
+    if db_user:
+        for key, value in user.dict(exclude_unset=True).items():
+            setattr(db_user, key, value)
+        db_user.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(db_user)
     return db_user
 
-def delete_user(db: Session, user_id: int) -> bool:
-    """Удалить пользователя"""
-    db_user = get_user_by_id(db, user_id)
-    if not db_user:
-        return False
-    
-    db.delete(db_user)
-    db.commit()
-    return True
+def delete_user(db: Session, user_id: int):
+    db_user = get_user(db, user_id)
+    if db_user:
+        db.delete(db_user)
+        db.commit()
+    return db_user
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[models.User]:
     """Аутентификация пользователя"""
@@ -104,7 +67,7 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[models
 
 def change_password(db: Session, user_id: int, old_password: str, new_password: str) -> bool:
     """Сменить пароль пользователя"""
-    user = get_user_by_id(db, user_id)
+    user = get_user(db, user_id)
     if not user:
         return False
     
@@ -117,7 +80,7 @@ def change_password(db: Session, user_id: int, old_password: str, new_password: 
 
 def toggle_user_status(db: Session, user_id: int) -> Optional[models.User]:
     """Включить/выключить пользователя"""
-    user = get_user_by_id(db, user_id)
+    user = get_user(db, user_id)
     if not user:
         return None
     
@@ -125,3 +88,41 @@ def toggle_user_status(db: Session, user_id: int) -> Optional[models.User]:
     db.commit()
     db.refresh(user)
     return user
+
+def get_user_files(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.File).filter(models.File.owner_id == user_id).offset(skip).limit(limit).all()
+
+def get_file(db: Session, file_id: int):
+    return db.query(models.File).filter(models.File.id == file_id).first()
+
+def get_files_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.File).filter(models.File.owner_id == user_id).offset(skip).limit(limit).all()
+
+def create_file(db: Session, file: schemas.FileCreate, user_id: int):
+    db_file = models.File(
+        **file.dict(),
+        owner_id=user_id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(db_file)
+    db.commit()
+    db.refresh(db_file)
+    return db_file
+
+def update_file(db: Session, file_id: int, file: schemas.FileUpdate):
+    db_file = get_file(db, file_id)
+    if db_file:
+        for key, value in file.dict(exclude_unset=True).items():
+            setattr(db_file, key, value)
+        db_file.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(db_file)
+    return db_file
+
+def delete_file(db: Session, file_id: int):
+    db_file = get_file(db, file_id)
+    if db_file:
+        db.delete(db_file)
+        db.commit()
+    return db_file

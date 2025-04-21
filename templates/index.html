@@ -163,7 +163,7 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('token', data.access_token);
                     checkAuth();
                 } else {
                     showAuthError('Неверное имя пользователя или пароль');
@@ -202,12 +202,12 @@
         }
         
         function logout() {
-            localStorage.removeItem('access_token');
+            localStorage.removeItem('token');
             checkAuth();
         }
         
         async function checkAuth() {
-            const token = localStorage.getItem('access_token');
+            const token = localStorage.getItem('token');
             if (!token) {
                 showAuth();
                 return;
@@ -223,7 +223,7 @@
                 if (response.ok) {
                     showMainContent();
                 } else {
-                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('token');
                     showAuth();
                 }
             } catch (error) {
@@ -299,7 +299,7 @@
             progressBar.style.width = '0%';
             progressBar.textContent = '0%';
             
-            const token = localStorage.getItem('access_token');
+            const token = localStorage.getItem('token');
             if (!token) {
                 showAuthError('Требуется авторизация');
                 return;
