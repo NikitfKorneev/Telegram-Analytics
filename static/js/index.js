@@ -230,3 +230,245 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check auth on load
     checkAuth();
 }); 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const authSection = document.getElementById('authSection');
+const mainContent = document.getElementById('mainContent');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const toggleRegister = document.getElementById('toggleRegister');
+const toggleLogin = document.getElementById('toggleLogin');
+const authError = document.getElementById('authError');
+const logoutBtn = document.getElementById('logoutBtn');
+const authTitle = document.getElementById('authTitle');
+
+// Функции аутентификации
+async function login(username, password) {
+    try {
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+        
+        const response = await fetch('/auth/token', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('token', data.access_token);
+            checkAuth();
+        } else {
+            showAuthError('Неверное имя пользователя или пароль');
+        }
+    } catch (error) {
+        showAuthError('Ошибка соединения');
+        console.error('Login error:', error);
+    }
+}
+
+async function register(username, email, password) {
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                email: email,
+                password: password
+            })
+        });
+        
+        if (response.ok) {
+            showAuthMessage('Регистрация успешна! Войдите в систему', 'success');
+            toggleForms();
+        } else {
+            const error = await response.json();
+            showAuthError(error.detail || 'Ошибка регистрации');
+        }
+    } catch (error) {
+        showAuthError('Ошибка соединения');
+        console.error('Registration error:', error);
+    }
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    checkAuth();
+}
+
+async function checkAuth() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showAuth();
+        return;
+    }
+    
+    try {
+        const response = await fetch('/protected-route', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            showMainContent();
+        } else {
+            localStorage.removeItem('token');
+            showAuth();
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+        showAuth();
+    }
+}
+
+function showAuth() {
+    authSection.classList.remove('hidden');
+    mainContent.classList.add('hidden');
+}
+
+function showMainContent() {
+    authSection.classList.add('hidden');
+    mainContent.classList.remove('hidden');
+}
+
+function showAuthError(message) {
+    authError.textContent = message;
+
+    authError.classList.remove('hidden', 'alert-success');
+    authError.classList.add('alert-danger');
+}
+
+function showAuthMessage(message, type = 'success') {
+    authError.textContent = message;
+    authError.classList.remove('hidden', 'alert-danger');
+    authError.classList.add('alert-' + type);
+}
+
+function toggleForms() {
+    loginForm.classList.toggle('hidden');
+    registerForm.classList.toggle('hidden');
+    authTitle.textContent = loginForm.classList.contains('hidden') ? 'Регистрация' : 'Вход';
+}
+
+// Обработчики событий
+loginForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    login(username, password);
+});
+
+registerForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const username = document.getElementById('regUsername').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    register(username, email, password);
+});
+
+toggleRegister.addEventListener('click', toggleForms);
+toggleLogin.addEventListener('click', toggleForms);
+logoutBtn.addEventListener('click', logout);
+
+// Оригинальный функционал Telegram Analytics
+document.getElementById('chatForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const chatName = document.getElementById('chat_name').value.trim();
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    const minWordLength = document.getElementById('min_word_length').value;
+    
+    const progressBar = document.getElementById('progressBar');
+    const progressContainer = document.getElementById('progressContainer');
+    const errorAlert = document.getElementById('errorAlert');
+    
+    // Сброс состояния
+    errorAlert.style.display = 'none';
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+    
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showAuthError('Требуется авторизация');
+        return;
+    }
+    
+    const ws = new WebSocket(`ws://${window.location.host}/ws`);
+    
+    ws.onopen = function() {
+        ws.send(JSON.stringify({
+            chat_name: chatName,
+            start_date: startDate,
+            end_date: endDate,
+            token: token
+        }));
+    };
+    
+    ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        
+        if (data.status === 'loading') {
+            const progress = Math.round(data.progress);
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${progress}%`;
+        } 
+        else if (data.status === 'completed') {
+            window.location.href = `/get_history?filename=${encodeURIComponent(data.filename)}&min_word_length=${minWordLength}`;
+        } 
+        else if (data.status === 'error') {
+            errorAlert.textContent = data.message;
+            errorAlert.style.display = 'block';
+            progressContainer.style.display = 'none';
+            
+            if (data.message.includes('авторизации')) {
+                logout();
+            }
+        }
+    };
+
+    ws.onerror = function() {
+        errorAlert.textContent = 'Ошибка соединения с сервером';
+        errorAlert.style.display = 'block';
+        progressContainer.style.display = 'none';
+    };
+});
+// Проверка аутентификации при загрузке
+document.addEventListener('DOMContentLoaded', checkAuth);

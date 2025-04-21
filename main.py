@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, Request, Depends, Form, HTTPException, status
-from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -15,7 +15,6 @@ from auth.dependencies import get_current_active_user
 from auth.schemas import User, UserCreate
 from auth import crud
 from auth.database import get_db
-from auth.utils import create_access_token
 from sqlalchemy.orm import Session
 from utils import count_words_in_file, create_plots
 from auth import models
@@ -135,24 +134,28 @@ async def register_user(
     confirm_password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    try:
-        if password != confirm_password:
-            return JSONResponse(
-                status_code=400,
-                content={"detail": "Пароли не совпадают"}
-            )
-        
-        user = UserCreate(
-            email=email,
-            is_active=True
+    if password != confirm_password:
+        return templates.TemplateResponse(
+            "welcome.html",
+            {"request": request, "error": "Пароли не совпадают"},
+            status_code=400
         )
-        
+    
+    user = UserCreate(
+        username=username,
+        name=name,
+        email=email,
+        password=password
+    )
+    
+    try:
         db_user = crud.create_user(db, user)
         return RedirectResponse(url="/", status_code=303)
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)}
+        return templates.TemplateResponse(
+            "welcome.html",
+            {"request": request, "error": str(e)},
+            status_code=400
         )
 
 @app.post("/auth/token")
@@ -162,23 +165,18 @@ async def login(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    try:
-        user = crud.authenticate_user(db, username, password)
-        if not user:
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Неверное имя пользователя или пароль"}
-            )
-        
-        access_token = create_access_token(data={"sub": user.email})
-        response = RedirectResponse(url="/", status_code=303)
-        response.set_cookie(key="token", value=f"Bearer {access_token}")
-        return response
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)}
+    user = crud.authenticate_user(db, username, password)
+    if not user:
+        return templates.TemplateResponse(
+            "welcome.html",
+            {"request": request, "error": "Неверное имя пользователя или пароль"},
+            status_code=401
         )
+    
+    access_token = create_access_token(data={"sub": user.username})
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(key="token", value=f"Bearer {access_token}")
+    return response
 
 @app.get("/welcome")
 async def welcome(request: Request):
@@ -216,10 +214,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/get_history")
 async def get_history(request: Request, filename: str, min_word_length: int = 5):
-    try:
-        if not os.path.exists(filename):
-            return RedirectResponse(url="/")
+    if not os.path.exists(filename):
+        return RedirectResponse(url="/")
 
+    try:
         word_count = count_words_in_file(filename)
         plots = create_plots(filename, min_word_length)
 
@@ -233,20 +231,12 @@ async def get_history(request: Request, filename: str, min_word_length: int = 5)
             "plot4": plots[4] if len(plots) > 4 else ''
         })
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)}
-        )
+        print(f"Error in get_history: {str(e)}")
+        return RedirectResponse(url="/")
 
 @app.get("/protected-route")
 async def protected_route(current_user: User = Depends(get_current_active_user)):
-    try:
-        return {"message": "This is a protected route", "user": current_user.email}
-    except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)}
-        )
+    return {"message": "This is a protected route", "user": current_user.username}
 
 if __name__ == "__main__":
     import uvicorn

@@ -5,18 +5,19 @@ import base64
 from collections import defaultdict
 from wordcloud import WordCloud
 import numpy as np
+from pathlib import Path
 
-def count_words_in_file(filename):
-    with open(filename, 'r', encoding='utf-8') as file:
+def count_words_in_file(filepath):
+    with open(filepath, 'r', encoding='utf-8') as file:
         text = file.read()
         words = text.split()
         return len(words)
 
-def create_plots(filename, min_word_length=5):
+def create_plots(filepath, min_word_length=5):
     plots = []
 
     try:
-        with open(filename, 'r', encoding='utf-8') as file:
+        with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
 
         sender_counts = defaultdict(int)
