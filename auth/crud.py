@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from typing import List, Optional
 from . import models, schemas
 from .utils import get_password_hash, verify_password
+from fastapi import HTTPException
 
 def get_user(db: Session, username: str) -> Optional[models.User]:
     """Получить пользователя по имени пользователя"""
@@ -31,12 +32,34 @@ def search_users(db: Session, query: str) -> List[models.User]:
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     """Создать нового пользователя"""
+    # Проверяем существующего пользователя по email
+    db_user_email = get_user_by_email(db, email=user.email)
+    if db_user_email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
+    # Проверяем существующего пользователя по username
+    db_user = get_user(db, username=user.username)
+    if db_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username already registered"
+        )
+    
+    # Get the default 'user' role
+    default_role = models.Role.get_default_role(db)
+    if not default_role:
+        raise HTTPException(status_code=500, detail="Default role not found")
+    
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
         username=user.username,
         email=user.email,
         hashed_password=hashed_password,
-        disabled=False
+        disabled=False,
+        role_id=default_role.id
     )
     db.add(db_user)
     db.commit()
@@ -70,9 +93,9 @@ def delete_user(db: Session, user_id: int) -> bool:
     db.commit()
     return True
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[models.User]:
+def authenticate_user(db: Session, email: str, password: str) -> Optional[models.User]:
     """Аутентификация пользователя"""
-    user = get_user(db, username)
+    user = get_user_by_email(db, email)
     if not user:
         return None
     if not verify_password(password, user.hashed_password):

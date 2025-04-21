@@ -6,7 +6,17 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    email: Optional[str] = None
+
+class RoleBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class Role(RoleBase):
+    id: int
+
+    class Config:
+        from_attributes = True
 
 class UserBase(BaseModel):
     username: str
@@ -20,9 +30,13 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
     disabled: Optional[bool] = None
+    role_id: Optional[int] = None
 
 class User(UserBase):
+    id: int
     disabled: Optional[bool] = None
+    role_id: int
+    role: Role
 
     class Config:
         from_attributes = True  # Ранее называлось orm_mode
