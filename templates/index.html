@@ -66,10 +66,6 @@
                     <div class="analytics-container">
                         <div class="card">
                             <div class="card-body">
-                                <div class="analytics-header">
-                                    <h1>Telegram Analytics</h1>
-                                    <button class="btn btn-danger" id="logoutBtn">Выйти</button>
-                                </div>
                                 
                                 <form id="chatForm" class="analytics-form">
                                     <div class="form-group">
@@ -100,7 +96,7 @@
                                 </form>
 
                                 <div class="progress-container" id="progressContainer">
-                                    <div class="progress-bar" id="progressBar">0%</div>
+                                    <div class="progress-bar" id="progressBar"> </div>
                                 </div>
 
                                 <div class="alert alert-danger" id="errorAlert"></div>
@@ -357,6 +353,72 @@
         
         // Check auth on load
         checkAuth();
+
+        // Добавляем обработчик формы анализа
+        const chatForm = document.getElementById('chatForm');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const errorAlert = document.getElementById('errorAlert');
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Получаем данные из формы
+            const formData = {
+                chat_name: document.getElementById('chat_name').value,
+                start_date: document.getElementById('start_date').value || null,
+                end_date: document.getElementById('end_date').value || null,
+                min_word_length: document.getElementById('min_word_length').value
+            };
+
+            try {
+                // Показываем прогресс бар
+                progressContainer.style.display = 'block';
+                errorAlert.style.display = 'none';
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+
+                // Подключаемся к WebSocket
+                const ws = new WebSocket(`ws://${window.location.host}/ws`);
+                
+                ws.onopen = () => {
+                    // Отправляем данные через WebSocket
+                    ws.send(JSON.stringify(formData));
+                };
+
+                ws.onmessage = async (event) => {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.status === 'error') {
+                        errorAlert.textContent = data.message;
+                        errorAlert.style.display = 'block';
+                        progressContainer.style.display = 'none';
+                    } 
+                    else if (data.status === 'completed') {
+                        // Когда загрузка завершена, переходим на страницу статистики
+                        window.location.href = `/get_history?filename=${data.filename}&min_word_length=${formData.min_word_length}`;
+                    }
+                    else if (data.progress) {
+                        // Обновляем прогресс бар
+                        progressBar.style.width = `${data.progress}%`;
+                        progressBar.textContent = `${Math.round(data.progress)}%`;
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    errorAlert.textContent = 'Ошибка соединения';
+                    errorAlert.style.display = 'block';
+                    progressContainer.style.display = 'none';
+                };
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorAlert.textContent = error.message;
+                errorAlert.style.display = 'block';
+                progressContainer.style.display = 'none';
+            }
+        });
     });
     </script>
 </body>
