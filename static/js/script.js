@@ -25,8 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleRegister = document.getElementById('toggleRegister');
     const toggleLogin = document.getElementById('toggleLogin');
     const authError = document.getElementById('authError');
-    const logoutBtn = document.getElementById('logoutBtn');
     const authTitle = document.getElementById('authTitle');
+    const guestButtons = document.querySelector('.auth-buttons-guest');
+    const userButtons = document.querySelector('.auth-buttons-user');
+    const usernameSpan = document.querySelector('.username');
 
     // Auth functions
     async function login(username, password) {
@@ -46,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 const data = await response.json();
                 localStorage.setItem('token', data.access_token);
+                localStorage.setItem('username', username); // Store username
+                updateAuthUI(true, username);
                 checkAuth();
             } else {
                 showAuthError('Неверное имя пользователя или пароль');
@@ -83,15 +87,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    function updateAuthUI(isAuthenticated, username = '') {
+        if (isAuthenticated) {
+            if (guestButtons) guestButtons.classList.add('hidden');
+            if (userButtons) userButtons.classList.remove('hidden');
+            if (usernameSpan) usernameSpan.textContent = username;
+        } else {
+            if (guestButtons) guestButtons.classList.remove('hidden');
+            if (userButtons) userButtons.classList.add('hidden');
+            if (usernameSpan) usernameSpan.textContent = '';
+        }
+    }
+    
     function logout() {
         localStorage.removeItem('token');
-        checkAuth();
+        localStorage.removeItem('username');
+        updateAuthUI(false);
+        window.location.href = '/';
     }
     
     async function checkAuth() {
         const token = localStorage.getItem('token');
+        const username = localStorage.getItem('username');
+        
         if (!token) {
-            showAuth();
+            updateAuthUI(false);
             return;
         }
         
@@ -103,14 +123,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (response.ok) {
-                showMainContent();
+                updateAuthUI(true, username);
             } else {
                 localStorage.removeItem('token');
-                showAuth();
+                localStorage.removeItem('username');
+                updateAuthUI(false);
             }
         } catch (error) {
             console.error('Auth check error:', error);
-            showAuth();
+            updateAuthUI(false);
         }
     }
     

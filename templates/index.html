@@ -6,6 +6,22 @@
     <title>Semantic Analysis | Анализ текстов</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/index.css">
+    <style>
+        .auth-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .username-text {
+            margin-right: 10px;
+            font-weight: 500;
+        }
+        #userInfo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -13,9 +29,15 @@
             <a href="/" style="text-decoration: none; color: inherit;">Semantic Analysis</a>
         </div>
         <div class="auth-buttons">
-            <a href="#" id="showLoginBtn" class="btn-secondary">Войти</a>
-            <a href="#" id="showRegisterBtn" class="btn-primary">Зарегистрироваться</a>
-            <button id="theme-toggle" class="btn-theme">🌙</button>
+            <div id="authButtons">
+                <a href="#" id="showLoginBtn" class="btn-secondary">Войти</a>
+                <a href="#" id="showRegisterBtn" class="btn-primary">Зарегистрироваться</a>
+            </div>
+            <div id="userInfo" class="hidden">
+                <span id="usernameDisplay" class="username-text"></span>
+                <a href="#" id="logoutBtn" class="btn-secondary">Выйти</a>
+                <button id="theme-toggle" class="btn-theme">🌙</button>
+            </div>
         </div>
     </header>
     
@@ -144,6 +166,9 @@
         const authTitle = document.getElementById('authTitle');
         const showLoginBtn = document.getElementById('showLoginBtn');
         const showRegisterBtn = document.getElementById('showRegisterBtn');
+        const authButtons = document.getElementById('authButtons');
+        const userInfo = document.getElementById('userInfo');
+        const usernameDisplay = document.getElementById('usernameDisplay');
 
         // Check URL parameters for form type
         const urlParams = new URLSearchParams(window.location.search);
@@ -271,11 +296,21 @@
         function showAuth() {
             authSection.classList.remove('hidden');
             mainContent.classList.add('hidden');
+            authButtons.style.display = 'flex';
+            userInfo.style.display = 'none';
         }
         
         function showMainContent() {
             authSection.classList.add('hidden');
             mainContent.classList.remove('hidden');
+            authButtons.style.display = 'none';
+            userInfo.style.display = 'flex';
+            // Get username from token
+            const token = localStorage.getItem('token');
+            if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                usernameDisplay.textContent = payload.sub;
+            }
         }
         
         function showAuthError(message) {

@@ -81,7 +81,30 @@ body.dark-theme .header {
 }
 
 .auth-buttons {
-  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-buttons-guest,
+.auth-buttons-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-buttons-user {
+  display: none;
+}
+
+.auth-buttons-user.visible {
+  display: flex;
+}
+
+.username {
+  font-weight: 500;
+  color: var(--text-color);
+  margin-right: 0.5rem;
 }
 
 .auth-buttons a {
@@ -378,7 +401,7 @@ body.dark-theme .auth-form a {
 
 /* Hidden Form */
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 /* Страница личного кабинета */
