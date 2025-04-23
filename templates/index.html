@@ -21,6 +21,9 @@
             align-items: center;
             gap: 10px;
         }
+        .logo {
+            margin-right: auto;
+        }
     </style>
 </head>
 <body>
@@ -296,15 +299,15 @@
         function showAuth() {
             authSection.classList.remove('hidden');
             mainContent.classList.add('hidden');
-            authButtons.style.display = 'flex';
-            userInfo.style.display = 'none';
+            authButtons.classList.remove('hidden');
+            userInfo.classList.add('hidden');
         }
         
         function showMainContent() {
             authSection.classList.add('hidden');
             mainContent.classList.remove('hidden');
-            authButtons.style.display = 'none';
-            userInfo.style.display = 'flex';
+            authButtons.classList.add('hidden');
+            userInfo.classList.remove('hidden');
             // Get username from token
             const token = localStorage.getItem('token');
             if (token) {
