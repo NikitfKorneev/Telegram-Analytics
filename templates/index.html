@@ -28,10 +28,10 @@
                             
                             <form id="loginForm" class="auth-form">
                                 <div class="form-group">
-                                    <input type="text" id="username" placeholder="Имя пользователя" required>
+                                    <input type="text" id="username" placeholder="Имя пользователя" required autocomplete="off">
                                 </div>
                                 <div class="form-group">
-                                    <input type="password" id="password" placeholder="Пароль" required>
+                                    <input type="password" id="password" placeholder="Пароль" required autocomplete="off">
                                 </div>
                                 <button type="submit" class="btn btn-primary">Войти</button>
                                 <button type="button" class="btn btn-link" id="toggleRegister">Зарегистрироваться</button>
@@ -39,16 +39,16 @@
                             
                             <form id="registerForm" class="auth-form hidden">
                                 <div class="form-group">
-                                    <input type="text" id="regUsername" placeholder="Имя пользователя" required>
+                                    <input type="text" id="regUsername" placeholder="Имя пользователя" required autocomplete="off">
                                 </div>
                                 <div class="form-group">
-                                    <input type="email" id="regEmail" placeholder="Email" required>
+                                    <input type="email" id="regEmail" placeholder="Email" required autocomplete="off">
                                 </div>
                                 <div class="form-group">
-                                    <input type="password" id="regPassword" placeholder="Пароль" required>
+                                    <input type="password" id="regPassword" placeholder="Пароль" required autocomplete="off">
                                 </div>
                                 <div class="form-group">
-                                    <input type="password" id="regConfirmPassword" placeholder="Подтвердите пароль" required>
+                                    <input type="password" id="regConfirmPassword" placeholder="Подтвердите пароль" required autocomplete="off">
                                 </div>
                                 <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
                                 <button type="button" class="btn btn-link" id="toggleLogin">Уже есть аккаунт? Войти</button>
@@ -163,6 +163,11 @@
             loginForm.classList.remove('hidden');
             registerForm.classList.add('hidden');
             authTitle.textContent = 'Вход';
+            // Очищаем поля формы регистрации
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regConfirmPassword').value = '';
         }
 
         function showRegisterForm() {
@@ -170,6 +175,9 @@
             loginForm.classList.add('hidden');
             registerForm.classList.remove('hidden');
             authTitle.textContent = 'Регистрация';
+            // Очищаем поля формы входа
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
         }
 
         // Auth functions
