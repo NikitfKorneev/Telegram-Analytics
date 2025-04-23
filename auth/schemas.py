@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    email: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
@@ -20,15 +20,19 @@ class Role(RoleBase):
         from_attributes = True
 
 class UserBase(BaseModel):
+    username: str
     email: EmailStr
     is_active: bool = True
 
 class UserCreate(UserBase):
-    pass
+    password: str
+    confirm_password: str
 
 class UserUpdate(UserBase):
+    username: Optional[str] = None
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
+    password: Optional[str] = None
 
 class User(UserBase):
     id: int

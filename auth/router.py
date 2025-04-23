@@ -13,17 +13,28 @@ router = APIRouter(tags=["auth"])
 @router.post("/register", response_model=schemas.User)
 async def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     try:
-        # Проверяем существующего пользователя
+        # Проверяем пароли
+        if user.password != user.confirm_password:
+            raise HTTPException(status_code=400, detail="Passwords do not match")
+            
+        # Проверяем существующего пользователя по email
         db_user = crud.get_user_by_email(db, email=user.email)
         if db_user:
             raise HTTPException(status_code=400, detail="Email already registered")
+            
+        # Проверяем существующего пользователя по username
+        db_user = crud.get_user_by_username(db, username=user.username)
+        if db_user:
+            raise HTTPException(status_code=400, detail="Username already registered")
         
         # Создаем пользователя
         return crud.create_user(db=db, user=user)
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        return JSONResponse(
+        raise HTTPException(
             status_code=500,
-            content={"detail": str(e)}
+            detail=str(e)
         )
 
 @router.post("/token")

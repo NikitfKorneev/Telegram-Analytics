@@ -28,16 +28,26 @@ def search_users(db: Session, query: str) -> List[models.User]:
     ).all()
 
 def create_user(db: Session, user: schemas.UserCreate):
-    db_user = models.User(
-        email=user.email,
-        is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    try:
+        hashed_password = get_password_hash(user.password)
+        db_user = models.User(
+            username=user.username,
+            email=user.email,
+            hashed_password=hashed_password,
+            is_active=True,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error creating user: {str(e)}"
+        )
 
 def update_user(db: Session, user_id: int, user: schemas.UserUpdate):
     db_user = get_user(db, user_id)
@@ -56,9 +66,9 @@ def delete_user(db: Session, user_id: int):
         db.commit()
     return db_user
 
-def authenticate_user(db: Session, email: str, password: str) -> Optional[models.User]:
+def authenticate_user(db: Session, username: str, password: str) -> Optional[models.User]:
     """Аутентификация пользователя"""
-    user = get_user_by_email(db, email)
+    user = get_user_by_username(db, username)
     if not user:
         return None
     if not verify_password(password, user.hashed_password):

@@ -13,7 +13,7 @@ from datetime import datetime
 from auth.router import router as auth_router
 from auth.dependencies import get_current_active_user
 from auth.schemas import User, UserCreate
-from auth import crud
+from auth import crud, utils
 from auth.database import get_db
 from sqlalchemy.orm import Session
 from utils import count_words_in_file, create_plots
@@ -160,23 +160,19 @@ async def register_user(
 
 @app.post("/auth/token")
 async def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = crud.authenticate_user(db, username, password)
+    user = crud.authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        return templates.TemplateResponse(
-            "welcome.html",
-            {"request": request, "error": "Неверное имя пользователя или пароль"},
-            status_code=401
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(data={"sub": user.username})
-    response = RedirectResponse(url="/", status_code=303)
-    response.set_cookie(key="token", value=f"Bearer {access_token}")
-    return response
+    access_token = utils.create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/welcome")
 async def welcome(request: Request):
