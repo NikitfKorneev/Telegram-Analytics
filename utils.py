@@ -6,6 +6,7 @@ from collections import defaultdict
 from wordcloud import WordCloud
 import numpy as np
 from pathlib import Path
+from pdf_generator import create_pdf
 
 def count_words_in_file(filepath):
     with open(filepath, 'r', encoding='utf-8') as file:
@@ -15,6 +16,7 @@ def count_words_in_file(filepath):
 
 def create_plots(filepath, min_word_length=5):
     plots = []
+    word_list = []  # Store words for PDF
 
     try:
         with open(filepath, 'r', encoding='utf-8') as file:
@@ -63,6 +65,9 @@ def create_plots(filepath, min_word_length=5):
 
             except (IndexError, ValueError):
                 continue
+
+        # Sort words by frequency for the PDF
+        word_list = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
 
         # График 1: Активность по месяцам и дням
         plt.figure(figsize=(12, 6))
@@ -124,6 +129,13 @@ def create_plots(filepath, min_word_length=5):
             plt.savefig(buf, format='png', bbox_inches='tight')
             plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
             plt.close()
+
+        # Create PDF
+        pdf_path = create_pdf(filepath, plots, word_list)
+        if pdf_path:
+            print(f"PDF created successfully: {pdf_path}")
+        else:
+            print("Failed to create PDF")
 
     except Exception as e:
         print(f"Error generating plots: {str(e)}")
