@@ -28,6 +28,11 @@
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -35,7 +40,10 @@
         <div class="row mb-4">
             <div class="col">
                 <h1 class="text-center">Результаты анализа</h1>
-                <a href="/welcome" class="btn btn-primary">Назад</a>
+                <div class="button-group">
+                    <a href="/welcome" class="btn btn-primary">Назад</a>
+                    <a href="/download_pdf" class="btn btn-success">Скачать PDF отчет</a>
+                </div>
             </div>
         </div>
 

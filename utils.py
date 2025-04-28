@@ -6,13 +6,16 @@ from collections import defaultdict
 from wordcloud import WordCloud
 import numpy as np
 from pathlib import Path
-from pdf_generator import create_pdf
 
 def count_words_in_file(filepath):
-    with open(filepath, 'r', encoding='utf-8') as file:
-        text = file.read()
-        words = text.split()
-        return len(words)
+    try:
+        with open(filepath, 'r', encoding='utf-8') as file:
+            text = file.read()
+            words = text.split()
+            return len(words)
+    except Exception as e:
+        print(f"Error counting words: {str(e)}")
+        return 0
 
 def create_plots(filepath, min_word_length=5):
     plots = []
@@ -73,7 +76,7 @@ def create_plots(filepath, min_word_length=5):
         plt.figure(figsize=(12, 6))
         months = sorted(month_day_counts.keys())
         heatmap_data = [month_day_counts[month] for month in months]
-        sns.heatmap(heatmap_data, cmap="YlGnBu", xticklabels=range(1, 32), yticklabels=months)
+        sns.heatmap(heatmap_data, xticklabels=range(1, 32), yticklabels=months, cmap='YlOrRd')
         plt.title('Активность по дням месяца')
         plt.xlabel('День месяца')
         plt.ylabel('Месяц')
@@ -82,37 +85,38 @@ def create_plots(filepath, min_word_length=5):
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
         plt.close()
 
-        # График 2: Топ отправителей
-        plt.figure(figsize=(10, 6))
-        top_senders = sorted(sender_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-        sns.barplot(x=[v for k, v in top_senders], y=[k for k, v in top_senders])
-        plt.title('Топ 10 отправителей')
-        plt.xlabel('Количество сообщений')
-        plt.ylabel('Отправитель')
+        # График 2: Активность по часам
+        plt.figure(figsize=(12, 6))
+        hours = sorted(hour_counts.keys())
+        plt.bar(hours, [hour_counts[h] for h in hours])
+        plt.title('Активность по часам')
+        plt.xlabel('Час')
+        plt.ylabel('Количество сообщений')
+        plt.xticks(range(24))
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
         plt.close()
 
-        # График 3: Активность по часам
-        plt.figure(figsize=(10, 6))
-        hours = sorted(hour_counts.keys())
-        values = [hour_counts[h] for h in hours]
-        sns.lineplot(x=hours, y=values)
-        plt.title('Активность по часам')
-        plt.xlabel('Час дня')
+        # График 3: Распределение длины сообщений
+        plt.figure(figsize=(12, 6))
+        plt.hist(message_lengths, bins=50)
+        plt.title('Распределение длины сообщений')
+        plt.xlabel('Длина сообщения')
         plt.ylabel('Количество сообщений')
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
         plt.close()
 
-        # График 4: Распределение длины сообщений
-        plt.figure(figsize=(10, 6))
-        sns.histplot(message_lengths, bins=50)
-        plt.title('Распределение длины сообщений')
-        plt.xlabel('Длина сообщения')
-        plt.ylabel('Количество')
+        # График 4: Топ отправителей
+        plt.figure(figsize=(12, 6))
+        top_senders = sorted(sender_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        plt.bar([str(s[0]) for s in top_senders], [s[1] for s in top_senders])
+        plt.title('Топ отправителей')
+        plt.xlabel('ID отправителя')
+        plt.ylabel('Количество сообщений')
+        plt.xticks(rotation=45)
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
@@ -129,13 +133,6 @@ def create_plots(filepath, min_word_length=5):
             plt.savefig(buf, format='png', bbox_inches='tight')
             plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
             plt.close()
-
-        # Create PDF
-        pdf_path = create_pdf(filepath, plots, word_list)
-        if pdf_path:
-            print(f"PDF created successfully: {pdf_path}")
-        else:
-            print("Failed to create PDF")
 
     except Exception as e:
         print(f"Error generating plots: {str(e)}")

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, Request, Depends, Form, HTTPException, status
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -19,9 +19,29 @@ from sqlalchemy.orm import Session
 from utils import count_words_in_file, create_plots
 from auth import models
 from auth.database import engine
+from pathlib import Path
+import matplotlib.pyplot as plt
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from io import BytesIO
+import base64
+from starlette.middleware.sessions import SessionMiddleware
+import secrets
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from collections import Counter
+import re
+from pdf_generator import create_pdf
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
+
+# Add session middleware with a secret key
+app.add_middleware(SessionMiddleware, secret_key=secrets.token_urlsafe(32))
+
 app.include_router(auth_router, prefix="/auth")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -32,6 +52,17 @@ api_hash = '830e613e5101bd49150bf208e29a1e4c'
 phone_number = '89160071580'
 session_name = 'my_session'
 client = TelegramClient(session_name, api_id, api_hash)
+
+# Регистрируем шрифт для поддержки кириллицы
+pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
+pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
+
+def get_word_frequency(filename, min_word_length=5):
+    with open(filename, 'r', encoding='utf-8') as file:
+        text = file.read()
+        # Извлекаем слова, игнорируя специальные символы и числа
+        words = re.findall(r'\b[а-яА-ЯёЁ]{' + str(min_word_length) + ',}\b', text)
+        return Counter(words).most_common(20)
 
 async def start_telegram_client():
     try:
@@ -214,6 +245,9 @@ async def get_history(request: Request, filename: str, min_word_length: int = 5)
         return RedirectResponse(url="/")
 
     try:
+        # Сохраняем имя файла в сессии
+        request.session['current_file'] = filename
+        
         word_count = count_words_in_file(filename)
         plots = create_plots(filename, min_word_length)
 
@@ -233,6 +267,38 @@ async def get_history(request: Request, filename: str, min_word_length: int = 5)
 @app.get("/protected-route")
 async def protected_route(current_user: User = Depends(get_current_active_user)):
     return {"message": "This is a protected route", "user": current_user.username}
+
+@app.get("/download_pdf")
+async def download_pdf(request: Request):
+    try:
+        # Получаем имя файла из сессии
+        filename = request.session.get('current_file')
+        if not filename:
+            raise HTTPException(status_code=404, detail="Файл не найден")
+
+        # Проверяем существование файла
+        if not os.path.exists(filename):
+            raise HTTPException(status_code=404, detail=f"Файл {filename} не найден")
+
+        # Получаем количество слов и графики
+        word_count = count_words_in_file(filename)
+        plots = create_plots(filename)
+
+        # Создаем PDF
+        pdf_path, pdf_filename = create_pdf(filename, plots, word_count)
+
+        # Отправляем файл
+        return FileResponse(
+            path=pdf_path,
+            filename=pdf_filename,
+            media_type='application/pdf'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error creating PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

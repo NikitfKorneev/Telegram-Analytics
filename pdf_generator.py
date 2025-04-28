@@ -1,81 +1,151 @@
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import inch
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.units import inch, cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import base64
 import os
 from pathlib import Path
+from datetime import datetime
+from collections import Counter
+import re
 
 # Регистрация шрифта DejaVuSans из папки font
-font_path = Path('font/DejaVuSans.ttf')
-pdfmetrics.registerFont(TTFont('DejaVuSans', str(font_path)))
+font_path = Path('fonts/DejaVuSans.ttf')
+if font_path.exists():
+    pdfmetrics.registerFont(TTFont('DejaVuSans', str(font_path)))
+else:
+    print("Warning: DejaVuSans.ttf not found in fonts directory")
 
-def create_pdf(filepath, plots, word_list):
+def get_word_frequency(filename, min_word_length=3):
+    try:
+        # Преобразуем путь в объект Path
+        file_path = Path(filename)
+        print(f"Trying to read file: {file_path}")
+        print(f"File exists: {file_path.exists()}")
+        
+        if not file_path.exists():
+            print(f"File not found: {filename}")
+            return []
+            
+        with open(file_path, 'r', encoding='utf-8') as file:
+            text = file.read()
+            print(f"Successfully read file. Text length: {len(text)}")
+            
+            # Улучшенное регулярное выражение для русских слов
+            # Ищем слова, начинающиеся с буквы, содержащие только буквы
+            words = re.findall(r'[а-яА-ЯёЁ][а-яА-ЯёЁ-]*[а-яА-ЯёЁ]', text)
+            print(f"Found {len(words)} words")
+            
+            # Фильтруем слова по длине
+            words = [word for word in words if len(word) >= min_word_length]
+            print(f"After length filtering: {len(words)} words")
+            
+            if not words:
+                print("No words found in the text")
+                return []
+                
+            # Приводим все слова к нижнему регистру для корректного подсчета
+            words = [word.lower() for word in words]
+            
+            # Исключаем стоп-слова
+            stop_words = {'это', 'что', 'как', 'для', 'если', 'или', 'но', 'и', 'а', 'в', 'на', 'с', 'по', 'к', 'у', 'о', 'от', 'до', 'за', 'из', 'над', 'под', 'при', 'через', 'без', 'между', 'перед', 'после', 'через', 'во', 'со', 'об', 'не', 'нет', 'да', 'нет', 'быть', 'есть', 'был', 'была', 'было', 'были', 'стать', 'стал', 'стала', 'стало', 'стали', 'мочь', 'могу', 'можешь', 'может', 'можем', 'можете', 'могут', 'хотеть', 'хочу', 'хочешь', 'хочет', 'хотим', 'хотите', 'хотят'}
+            words = [word for word in words if word not in stop_words]
+            print(f"After filtering stop words: {len(words)} words")
+            
+            result = Counter(words).most_common(50)
+            print(f"Returning {len(result)} most common words")
+            return result
+            
+    except Exception as e:
+        print(f"Error in get_word_frequency: {str(e)}")
+        return []
+
+def create_pdf(filepath, plots, word_count):
     try:
         # Создание PDF
-        pdf_path = Path(filepath).with_suffix('.pdf')
-        c = canvas.Canvas(str(pdf_path), pagesize=letter)
-        width, height = letter
+        pdf_filename = f"telegram_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        pdf_path = Path(filepath).parent / pdf_filename
+        c = canvas.Canvas(str(pdf_path), pagesize=A4)  # Используем A4 для большего пространства
+        width, height = A4
 
         # Добавление заголовка
         c.setFont("DejaVuSans", 24)
-        c.drawString(1*inch, height - 1*inch, "Анализ чата Telegram")
+        c.drawString(2*cm, height - 2*cm, "Анализ чата Telegram")
         c.setFont("DejaVuSans", 12)
 
-        # Сохранение графиков во временные файлы и добавление их в PDF
-        y_position = height - 2*inch
-        for i, plot_data in enumerate(plots):
-            # Декодирование base64 данных
-            plot_bytes = base64.b64decode(plot_data)
-            
-            # Сохранение во временный файл
-            temp_file = f"temp_plot_{i}.png"
-            with open(temp_file, 'wb') as f:
-                f.write(plot_bytes)
-            
-            # Добавление изображения в PDF
-            c.drawImage(temp_file, 1*inch, y_position - 3*inch, width=6*inch, height=3*inch)
-            y_position -= 4*inch
-            
-            # Удаление временного файла
-            os.remove(temp_file)
-            
-            if y_position < 2*inch:
-                c.showPage()
-                c.setFont("DejaVuSans", 12)
-                y_position = height - 1*inch
+        # Добавление статистики
+        c.drawString(2*cm, height - 4*cm, f"Всего слов: {word_count}")
 
-        # Добавление списка слов
+        # Анализ частоты слов
+        word_freq = get_word_frequency(filepath)
+        
+        if word_freq:
+            # Добавление списка частых слов
+            c.setFont("DejaVuSans", 16)
+            c.drawString(2*cm, height - 6*cm, "Часто используемые слова:")
+            c.setFont("DejaVuSans", 12)
+            
+            # Настройки для отображения слов в один столбец
+            y_position = height - 8*cm
+            x_position = 2*cm
+            line_height = 0.7*cm  # Высота строки
+            words_per_page = 35   # Количество слов на странице
+            
+            for i, (word, count) in enumerate(word_freq):
+                text = f"{word}: {count}"
+                c.drawString(x_position, y_position, text)
+                y_position -= line_height
+                
+                # Если достигли конца страницы, создаем новую
+                if y_position < 2*cm or (i + 1) % words_per_page == 0:
+                    c.showPage()
+                    c.setFont("DejaVuSans", 12)
+                    y_position = height - 2*cm
+                    x_position = 2*cm
+        else:
+            c.setFont("DejaVuSans", 12)
+            c.drawString(2*cm, height - 6*cm, "Не удалось проанализировать частоту слов")
+
+        # Добавление графиков
         c.showPage()
         c.setFont("DejaVuSans", 16)
-        c.drawString(1*inch, height - 1*inch, "Частотный список слов")
+        c.drawString(2*cm, height - 2*cm, "Визуализация данных:")
         c.setFont("DejaVuSans", 12)
 
-        # Добавление слов в две колонки
-        y_position = height - 2*inch
-        x_position = 1*inch
-        column_width = 3*inch
-        words_per_column = 50
-
-        for i, (word, count) in enumerate(word_list[:100]):
-            if i % words_per_column == 0 and i > 0:
-                x_position += column_width + 1*inch
-                y_position = height - 2*inch
-
-            text = f"{word}: {count}"
-            c.drawString(x_position, y_position, text)
-            y_position -= 0.3*inch
-
-            if y_position < 1*inch:
-                c.showPage()
-                c.setFont("DejaVuSans", 12)
-                y_position = height - 1*inch
-                x_position = 1*inch
+        y_position = height - 4*cm
+        for i, plot_data in enumerate(plots):
+            if not plot_data:  # Пропускаем пустые графики
+                continue
+                
+            try:
+                # Декодирование base64 данных
+                plot_bytes = base64.b64decode(plot_data)
+                
+                # Сохранение во временный файл
+                temp_file = f"temp_plot_{i}.png"
+                with open(temp_file, 'wb') as f:
+                    f.write(plot_bytes)
+                
+                # Добавление изображения в PDF с сохранением пропорций
+                # Используем максимальную ширину 16 см и высоту 10 см
+                c.drawImage(temp_file, 2*cm, y_position - 10*cm, width=16*cm, height=10*cm, preserveAspectRatio=True)
+                y_position -= 12*cm
+                
+                # Удаление временного файла
+                os.remove(temp_file)
+                
+                if y_position < 4*cm:
+                    c.showPage()
+                    c.setFont("DejaVuSans", 12)
+                    y_position = height - 2*cm
+            except Exception as e:
+                print(f"Error adding plot {i} to PDF: {str(e)}")
+                continue
 
         c.save()
-        return str(pdf_path)
+        return str(pdf_path), pdf_filename
 
     except Exception as e:
-        print(f"Ошибка при генерации PDF: {str(e)}")
-        return None
+        print(f"Error creating PDF: {str(e)}")
+        raise  # Пробрасываем исключение дальше
