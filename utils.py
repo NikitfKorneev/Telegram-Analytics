@@ -77,7 +77,7 @@ def create_plots(filepath, min_word_length=5):
         months = sorted(month_day_counts.keys())
         heatmap_data = [month_day_counts[month] for month in months]
         sns.heatmap(heatmap_data, xticklabels=range(1, 32), yticklabels=months, cmap='YlOrRd')
-        plt.title('Активность по дням месяца')
+        plt.title('Активность по месяцам и дням')
         plt.xlabel('День месяца')
         plt.ylabel('Месяц')
         buf = BytesIO()
@@ -85,11 +85,11 @@ def create_plots(filepath, min_word_length=5):
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
         plt.close()
 
-        # График 2: Активность по часам
+        # График 2: Распределение сообщений по часам суток
         plt.figure(figsize=(12, 6))
         hours = sorted(hour_counts.keys())
         plt.bar(hours, [hour_counts[h] for h in hours])
-        plt.title('Активность по часам')
+        plt.title('Распределение сообщений по часам суток')
         plt.xlabel('Час')
         plt.ylabel('Количество сообщений')
         plt.xticks(range(24))
@@ -101,7 +101,7 @@ def create_plots(filepath, min_word_length=5):
         # График 3: Распределение длины сообщений
         plt.figure(figsize=(12, 6))
         plt.hist(message_lengths, bins=50)
-        plt.title('Распределение длины сообщений')
+        plt.title('Топ-10 самых активных участников')
         plt.xlabel('Длина сообщения')
         plt.ylabel('Количество сообщений')
         buf = BytesIO()
@@ -109,12 +109,12 @@ def create_plots(filepath, min_word_length=5):
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
         plt.close()
 
-        # График 4: Топ отправителей
+        # График 4: Топ-10 самых активных участников
         plt.figure(figsize=(12, 6))
         top_senders = sorted(sender_counts.items(), key=lambda x: x[1], reverse=True)[:10]
         plt.bar([str(s[0]) for s in top_senders], [s[1] for s in top_senders])
-        plt.title('Топ отправителей')
-        plt.xlabel('ID отправителя')
+        plt.title('Распределение длины сообщений')
+        plt.xlabel('ID участника')
         plt.ylabel('Количество сообщений')
         plt.xticks(rotation=45)
         buf = BytesIO()
@@ -122,13 +122,13 @@ def create_plots(filepath, min_word_length=5):
         plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
         plt.close()
 
-        # График 5: Облако слов
+        # График 5: Облако слов из сообщений
         if word_counts:
             wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(word_counts)
             plt.figure(figsize=(12, 6))
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')
-            plt.title('Частые слова (от {} букв)'.format(min_word_length))
+            plt.title('Облако слов из сообщений (слова от {} букв)'.format(min_word_length))
             buf = BytesIO()
             plt.savefig(buf, format='png', bbox_inches='tight')
             plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
