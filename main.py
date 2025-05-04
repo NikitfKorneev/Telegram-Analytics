@@ -51,7 +51,6 @@ templates = Jinja2Templates(directory="templates")
 # Telegram API
 api_id = 24612694
 api_hash = '830e613e5101bd49150bf208e29a1e4c'
-phone_number = '89160071580'
 session_name = 'my_session'
 client = TelegramClient(session_name, api_id, api_hash)
 
@@ -66,22 +65,28 @@ def get_word_frequency(filename, min_word_length=5):
         words = re.findall(r'\b[а-яА-ЯёЁ]{' + str(min_word_length) + ',}\b', text)
         return Counter(words).most_common(20)
 
-async def start_telegram_client():
+async def start_telegram_client(phone_number: str, code: str = None, password: str = None):
     try:
         await client.connect()
         if not await client.is_user_authorized():
-            print("Отправка кода подтверждения...")
-            await client.send_code_request(phone_number)
-            code = input("Введите код из Telegram: ")
-            await client.sign_in(phone_number, code)
-        return True
-    except SessionPasswordNeededError:
-        password = input("Введите пароль двухфакторной аутентификации: ")
-        await client.sign_in(password=password)
-        return True
+            if not code:
+                try:
+                    await client.send_code_request(phone_number)
+                    print(f"Код подтверждения отправлен на номер {phone_number}")  # Для отладки
+                    return {"status": "code_required", "message": "Код подтверждения отправлен"}
+                except Exception as e:
+                    print(f"Ошибка при отправке кода: {str(e)}")  # Для отладки
+                    return {"status": "error", "message": f"Ошибка при отправке кода: {str(e)}"}
+            try:
+                await client.sign_in(phone_number, code)
+            except SessionPasswordNeededError:
+                if not password:
+                    return {"status": "password_required", "message": "Требуется пароль двухфакторной аутентификации"}
+                await client.sign_in(password=password)
+        return {"status": "success", "message": "Авторизация успешна"}
     except Exception as e:
-        print(f"Ошибка авторизации: {str(e)}")
-        return False
+        print(f"Ошибка авторизации: {str(e)}")  # Для отладки
+        return {"status": "error", "message": str(e)}
 
 async def get_chat_history(chat_name, websocket, start_date=None, end_date=None):
     try:
@@ -171,6 +176,10 @@ async def startup_event():
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("welcome.html", {"request": request})
+
+@app.get("/tutorial", response_class=HTMLResponse)
+async def tutorial(request: Request):
+    return templates.TemplateResponse("tutorial.html", {"request": request})
 
 @app.post("/auth/register")
 async def register_user(

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подключение Telegram | Semantic Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/welcome.css">
+    <style>
+        .auth-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .auth-header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .telegram-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            border-color: #0088cc;
+            outline: none;
+        }
+
+        .submit-btn {
+            background-color: #0088cc;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .submit-btn:hover {
+            background-color: #006699;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message {
+            color: #2e7d32;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        /* Dark theme styles */
+        body.dark-theme {
+            background-color: #1a1a1a;
+        }
+
+        body.dark-theme .auth-container {
+            background-color: #2d2d2d;
+        }
+
+        body.dark-theme .auth-header h1 {
+            color: #ffffff;
+        }
+
+        body.dark-theme .auth-header p {
+            color: #e0e0e0;
+        }
+
+        body.dark-theme .form-group label {
+            color: #ffffff;
+        }
+
+        body.dark-theme .form-group input {
+            background-color: #3d3d3d;
+            border-color: #4d4d4d;
+            color: #ffffff;
+        }
+
+        body.dark-theme .form-group input:focus {
+            border-color: #0088cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Подключение Telegram</h1>
+            <p>Введите данные для подключения вашего аккаунта Telegram</p>
+        </div>
+        <form class="telegram-form" id="telegramAuthForm">
+            <div class="form-group">
+                <label for="phone">Номер телефона</label>
+                <input type="tel" id="phone" name="phone" placeholder="+7XXXXXXXXXX" required>
+                <div class="error-message" id="phone-error"></div>
+            </div>
+            <div class="form-group">
+                <label for="code">Код подтверждения</label>
+                <input type="text" id="code" name="code" placeholder="Введите код из Telegram" required>
+                <div class="error-message" id="code-error"></div>
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль двухфакторной аутентификации</label>
+                <input type="password" id="password" name="password" placeholder="Введите пароль (если установлен)">
+                <div class="error-message" id="password-error"></div>
+            </div>
+            <button type="submit" class="submit-btn">Подключить</button>
+        </form>
+    </div>
+
+    <script>
+        let currentStep = 'phone'; // phone, code, password
+
+        function showMessage(message, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isError ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            messageDiv.style.marginTop = '10px';
+            messageDiv.style.padding = '10px';
+            messageDiv.style.borderRadius = '4px';
+            messageDiv.style.backgroundColor = isError ? '#ffebee' : '#e8f5e9';
+            messageDiv.style.color = isError ? '#c62828' : '#2e7d32';
+            
+            const form = document.getElementById('telegramAuthForm');
+            form.insertBefore(messageDiv, form.firstChild);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        document.getElementById('telegramAuthForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const phone = document.getElementById('phone').value;
+            const code = document.getElementById('code').value;
+            const password = document.getElementById('password').value;
+
+            // Создаем объект с данными в зависимости от текущего шага
+            const requestData = {
+                phone: phone
+            };
+
+            if (currentStep === 'code') {
+                requestData.code = code;
+            } else if (currentStep === 'password') {
+                requestData.code = code;
+                requestData.password = password;
+            }
+
+            try {
+                const response = await fetch('/api/telegram-auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const data = await response.json();
+                console.log('Ответ сервера:', data); // Для отладки
+
+                if (data.status === 'code_required') {
+                    currentStep = 'code';
+                    document.getElementById('phone').disabled = true;
+                    document.getElementById('code').disabled = false;
+                    document.getElementById('password').disabled = true;
+                    showMessage(data.message || 'Введите код подтверждения');
+                } else if (data.status === 'password_required') {
+                    currentStep = 'password';
+                    document.getElementById('phone').disabled = true;
+                    document.getElementById('code').disabled = true;
+                    document.getElementById('password').disabled = false;
+                    showMessage(data.message || 'Введите пароль двухфакторной аутентификации');
+                } else if (data.status === 'success') {
+                    showMessage(data.message || 'Авторизация успешна');
+                    setTimeout(() => {
+                        window.location.href = '/welcome?form=login';
+                    }, 2000);
+                } else {
+                    showMessage(data.message || 'Произошла ошибка при подключении', true);
+                }
+            } catch (error) {
+                console.error('Ошибка при отправке данных:', error);
+                showMessage('Произошла ошибка при подключении', true);
+            }
+        });
+
+        // Инициализация формы
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('code').disabled = true;
+            document.getElementById('password').disabled = true;
+        });
+
+        // Валидация номера телефона
+        document.getElementById('phone').addEventListener('input', function(e) {
+            const phone = e.target.value;
+            const phoneError = document.getElementById('phone-error');
+            
+            if (!phone.match(/^\+7\d{10}$/)) {
+                phoneError.textContent = 'Введите корректный номер телефона в формате +7XXXXXXXXXX';
+                phoneError.style.display = 'block';
+            } else {
+                phoneError.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 
