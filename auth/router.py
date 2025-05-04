@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Response
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from . import schemas, crud, models, utils
 from .database import get_db
 from .dependencies import get_current_active_user
@@ -144,7 +144,9 @@ async def get_users(
     current_user: models.User = Depends(utils.get_current_user),
     db: Session = Depends(get_db)
 ):
-    users = db.query(models.User).all()
+    users = db.query(models.User).options(
+        joinedload(models.User.role).joinedload(models.Role.permissions)
+    ).all()
     return users
 
 @router.get("/users/{user_id}")

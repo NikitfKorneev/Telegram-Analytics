@@ -907,25 +907,43 @@
                 const token = localStorage.getItem('token');
                 if (!token) {
                     document.getElementById('adminTab').style.display = 'none';
+                    document.getElementById('history-tab').style.display = 'none';
                     return;
                 }
                 
-                const response = await fetch('/auth/users/', {
+                const response = await fetch('/auth/users/me', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
                 
                 if (response.ok) {
-                    document.getElementById('adminTab').style.display = 'block';
-                    // Загружаем список пользователей при открытии вкладки админ-панели
-                    document.getElementById('admin-tab').addEventListener('shown.bs.tab', loadUsers);
+                    const user = await response.json();
+                    const permissions = user.role ? user.role.permissions.map(p => p.name) : [];
+                    
+                    // Показываем админ-панель только для пользователей с правом manage_users
+                    if (permissions.includes('manage_users')) {
+                        document.getElementById('adminTab').style.display = 'block';
+                        // Загружаем список пользователей при открытии вкладки админ-панели
+                        document.getElementById('admin-tab').addEventListener('shown.bs.tab', loadUsers);
+                    } else {
+                        document.getElementById('adminTab').style.display = 'none';
+                    }
+                    
+                    // Показываем историю для админов и супер-пользователей
+                    if (permissions.includes('manage_users') || permissions.includes('view_history')) {
+                        document.getElementById('history-tab').style.display = 'block';
+                    } else {
+                        document.getElementById('history-tab').style.display = 'none';
+                    }
                 } else {
                     document.getElementById('adminTab').style.display = 'none';
+                    document.getElementById('history-tab').style.display = 'none';
                 }
             } catch (error) {
                 console.error('Ошибка проверки прав доступа:', error);
                 document.getElementById('adminTab').style.display = 'none';
+                document.getElementById('history-tab').style.display = 'none';
             }
         }
 

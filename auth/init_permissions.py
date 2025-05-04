@@ -22,6 +22,7 @@ def init_permissions():
         # Разрешения для аналитики
         Permission(name="view_analytics", description="Can view basic analytics"),
         Permission(name="view_advanced_analytics", description="Can view advanced analytics"),
+        Permission(name="view_history", description="Can view analysis history"),
         
         # Административные разрешения
         Permission(name="manage_users", description="Can manage users"),
@@ -73,7 +74,8 @@ def init_permissions():
                 "delete_file",
                 "share_file",
                 "view_analytics",
-                "view_advanced_analytics"
+                "view_advanced_analytics",
+                "view_history"
             ])
         ).all()
         userplus_role.permissions = userplus_permissions
