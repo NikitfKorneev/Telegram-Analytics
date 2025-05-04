@@ -153,28 +153,37 @@ def create_plots(filepath, min_word_length=5):
         plt.close()
 
         # Plot 3: Message length distribution
+        plt.figure(figsize=(12, 8))
         if message_lengths:
-            plt.figure(figsize=(12, 8))
             plt.hist(message_lengths, bins=50, label='Текстовые сообщения')
             plt.axvline(x=0, color='r', linestyle='--', label='Не текстовые сообщения')
             plt.title('Распределение длины сообщений')
             plt.xlabel('Длина сообщения')
             plt.ylabel('Количество сообщений')
             plt.legend()
-            plt.tight_layout()
-            buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight')
-            plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
-            plt.close()
+        else:
+            plt.text(0.5, 0.5, 'Нет данных о длине сообщений', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Распределение длины сообщений')
+        plt.tight_layout()
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
+        plt.close()
 
         # Plot 4: Top 10 most active participants
         plt.figure(figsize=(12, 8))
         top_senders = sorted(sender_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-        plt.bar([str(s[0]) for s in top_senders], [s[1] for s in top_senders])
-        plt.title('Топ-10 самых активных участников')
-        plt.xlabel('ID участника')
-        plt.ylabel('Количество сообщений')
-        plt.xticks(rotation=45)
+        if top_senders:
+            plt.bar([str(s[0]) for s in top_senders], [s[1] for s in top_senders])
+            plt.title('Топ-10 самых активных участников')
+            plt.xlabel('ID участника')
+            plt.ylabel('Количество сообщений')
+            plt.xticks(rotation=45)
+        else:
+            plt.text(0.5, 0.5, 'Нет данных об участниках', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Топ-10 самых активных участников')
         plt.tight_layout()
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -182,28 +191,37 @@ def create_plots(filepath, min_word_length=5):
         plt.close()
 
         # Plot 5: Word cloud
+        plt.figure(figsize=(12, 8))
         if word_counts:
-            plt.figure(figsize=(12, 8))
             wordcloud = WordCloud(width=800, height=400, background_color='white').generate_from_frequencies(word_counts)
             plt.imshow(wordcloud, interpolation='bilinear')
             plt.axis('off')
             plt.title('Облако слов из сообщений (слова от {} букв)'.format(min_word_length))
-            plt.tight_layout()
-            buf = BytesIO()
-            plt.savefig(buf, format='png', bbox_inches='tight')
-            plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
-            plt.close()
+        else:
+            plt.text(0.5, 0.5, 'Нет данных для облака слов', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Облако слов')
+        plt.tight_layout()
+        buf = BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        plots.append(base64.b64encode(buf.getvalue()).decode('utf-8'))
+        plt.close()
 
         # Plot 6: Emotional tone by day
         plt.figure(figsize=(12, 8))
-        avg_sentiment = {day: np.mean(sentiments) for day, sentiments in day_sentiment.items()}
-        dates = sorted(avg_sentiment.keys())
-        sentiments = [avg_sentiment[date] for date in dates]
-        plt.plot(dates, sentiments)
-        plt.title('Эмоциональный окрас сообщений по дням')
-        plt.xlabel('Дата')
-        plt.ylabel('Средний эмоциональный тон')
-        plt.xticks(rotation=45)
+        if day_sentiment:
+            avg_sentiment = {day: np.mean(sentiments) for day, sentiments in day_sentiment.items()}
+            dates = sorted(avg_sentiment.keys())
+            sentiments = [avg_sentiment[date] for date in dates]
+            plt.plot(dates, sentiments)
+            plt.title('Эмоциональный окрас сообщений по дням')
+            plt.xlabel('Дата')
+            plt.ylabel('Средний эмоциональный тон')
+            plt.xticks(rotation=45)
+        else:
+            plt.text(0.5, 0.5, 'Нет данных об эмоциональном окрасе', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Эмоциональный окрас сообщений по дням')
         plt.tight_layout()
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -212,34 +230,39 @@ def create_plots(filepath, min_word_length=5):
 
         # Plot 7: Word length distribution
         plt.figure(figsize=(12, 8))
-        word_length_data = sorted(word_lengths.items())
-        grouped_lengths = defaultdict(int)
-        for length, count in word_length_data:
-            if length < 10:
-                grouped_lengths['<10'] += count
-            else:
-                grouped_lengths[str(length)] += count
-        
-        sorted_groups = sorted(grouped_lengths.items(), 
-                             key=lambda x: int(x[0]) if x[0] != '<10' else 0)
-        
-        total_words = sum(count for _, count in sorted_groups)
-        percentages = [(count / total_words * 100) for _, count in sorted_groups]
-        labels = [f'{length} букв' if length != '<10' else '<10 букв' 
-                 for length, _ in sorted_groups]
-        
-        y_pos = np.arange(len(labels))
-        bars = plt.barh(y_pos, percentages)
-        
-        for i, bar in enumerate(bars):
-            width = bar.get_width()
-            plt.text(width + 1, bar.get_y() + bar.get_height()/2,
-                    f'{percentages[i]:.1f}%',
-                    ha='left', va='center', fontsize=10)
-        
-        plt.yticks(y_pos, labels)
-        plt.xlabel('Процент слов')
-        plt.title('Распределение длины слов')
+        if word_lengths:
+            word_length_data = sorted(word_lengths.items())
+            grouped_lengths = defaultdict(int)
+            for length, count in word_length_data:
+                if length < 10:
+                    grouped_lengths['<10'] += count
+                else:
+                    grouped_lengths[str(length)] += count
+            
+            sorted_groups = sorted(grouped_lengths.items(), 
+                                key=lambda x: int(x[0]) if x[0] != '<10' else 0)
+            
+            total_words = sum(count for _, count in sorted_groups)
+            percentages = [(count / total_words * 100) for _, count in sorted_groups]
+            labels = [f'{length} букв' if length != '<10' else '<10 букв' 
+                     for length, _ in sorted_groups]
+            
+            y_pos = np.arange(len(labels))
+            bars = plt.barh(y_pos, percentages)
+            
+            for i, bar in enumerate(bars):
+                width = bar.get_width()
+                plt.text(width + 1, bar.get_y() + bar.get_height()/2,
+                        f'{percentages[i]:.1f}%',
+                        ha='left', va='center', fontsize=10)
+            
+            plt.yticks(y_pos, labels)
+            plt.xlabel('Процент слов')
+            plt.title('Распределение длины слов')
+        else:
+            plt.text(0.5, 0.5, 'Нет данных о длине слов', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Распределение длины слов')
         plt.grid(True, axis='x', linestyle='--', alpha=0.7)
         plt.tight_layout()
         buf = BytesIO()
@@ -251,11 +274,16 @@ def create_plots(filepath, min_word_length=5):
         plt.figure(figsize=(12, 8))
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         counts = [day_of_week_counts[day] for day in days]
-        plt.bar(days, counts)
-        plt.title('Активность по дням недели')
-        plt.xlabel('День недели')
-        plt.ylabel('Количество сообщений')
-        plt.xticks(rotation=45)
+        if any(counts):
+            plt.bar(days, counts)
+            plt.title('Активность по дням недели')
+            plt.xlabel('День недели')
+            plt.ylabel('Количество сообщений')
+            plt.xticks(rotation=45)
+        else:
+            plt.text(0.5, 0.5, 'Нет данных об активности по дням недели', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Активность по дням недели')
         plt.tight_layout()
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -264,13 +292,18 @@ def create_plots(filepath, min_word_length=5):
 
         # Plot 9: Average message length by sender
         plt.figure(figsize=(12, 8))
-        avg_lengths = {sender: np.mean(lengths) for sender, lengths in sender_avg_lengths.items()}
-        top_senders_length = sorted(avg_lengths.items(), key=lambda x: x[1], reverse=True)[:10]
-        plt.bar([str(s[0]) for s in top_senders_length], [s[1] for s in top_senders_length])
-        plt.title('Средняя длина сообщений по отправителям')
-        plt.xlabel('ID участника')
-        plt.ylabel('Средняя длина сообщения')
-        plt.xticks(rotation=45)
+        if sender_avg_lengths:
+            avg_lengths = {sender: np.mean(lengths) for sender, lengths in sender_avg_lengths.items()}
+            top_senders_length = sorted(avg_lengths.items(), key=lambda x: x[1], reverse=True)[:10]
+            plt.bar([str(s[0]) for s in top_senders_length], [s[1] for s in top_senders_length])
+            plt.title('Средняя длина сообщений по отправителям')
+            plt.xlabel('ID участника')
+            plt.ylabel('Средняя длина сообщения')
+            plt.xticks(rotation=45)
+        else:
+            plt.text(0.5, 0.5, 'Нет данных о средней длине сообщений', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Средняя длина сообщений по отправителям')
         plt.tight_layout()
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -281,8 +314,13 @@ def create_plots(filepath, min_word_length=5):
         plt.figure(figsize=(12, 8))
         time_periods = ['Morning', 'Afternoon', 'Evening', 'Night']
         counts = [time_period_counts[period] for period in time_periods]
-        plt.pie(counts, labels=time_periods, autopct='%1.1f%%')
-        plt.title('Активность по времени суток')
+        if any(counts):
+            plt.pie(counts, labels=time_periods, autopct='%1.1f%%')
+            plt.title('Активность по времени суток')
+        else:
+            plt.text(0.5, 0.5, 'Нет данных об активности по времени суток', 
+                    horizontalalignment='center', verticalalignment='center')
+            plt.title('Активность по времени суток')
         plt.tight_layout()
         buf = BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -291,5 +329,12 @@ def create_plots(filepath, min_word_length=5):
 
     except Exception as e:
         print(f"Error generating plots: {str(e)}")
+        # В случае ошибки добавляем пустые графики
+        for _ in range(10 - len(plots)):
+            plots.append("")
+
+    # Убеждаемся, что у нас ровно 10 графиков
+    while len(plots) < 10:
+        plots.append("")
 
     return plots

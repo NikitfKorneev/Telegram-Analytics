@@ -153,14 +153,6 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
                 offset_id = history.messages[-1].id
                 await asyncio.sleep(0.1)
 
-            # Сохраняем запись в историю при первой загрузке
-            params = {
-                'min_word_length': 5,
-                'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
-                'end_date': end_date.strftime('%Y-%m-%d') if end_date else ''
-            }
-            save_to_history(filename, params)
-
             await websocket.send_json({
                 "progress": 100,
                 "status": "completed",
@@ -395,16 +387,23 @@ async def get_history(request: Request, filename: str):
         word_count = count_words_in_file(filename)
         plots = create_plots(filename, min_word_length)
 
-        return templates.TemplateResponse("stats.html", {
+        # Создаем словарь с графиками
+        plot_dict = {
             "request": request,
             "word_count": word_count,
-            "plot0": plots[0] if len(plots) > 0 else '',
-            "plot1": plots[1] if len(plots) > 1 else '',
-            "plot2": plots[2] if len(plots) > 2 else '',
-            "plot3": plots[3] if len(plots) > 3 else '',
-            "plot4": plots[4] if len(plots) > 4 else '',
             "telegram_available": telegram_available
-        })
+        }
+        
+        # Добавляем все графики в словарь
+        for i, plot in enumerate(plots):
+            plot_dict[f"plot{i}"] = plot
+
+        # Проверяем, что у нас есть все 10 графиков
+        for i in range(10):
+            if f"plot{i}" not in plot_dict:
+                plot_dict[f"plot{i}"] = ""  # Добавляем пустую строку, если график отсутствует
+
+        return templates.TemplateResponse("stats.html", plot_dict)
     except Exception as e:
         print(f"Error in get_history: {str(e)}")
         return RedirectResponse(url="/")
