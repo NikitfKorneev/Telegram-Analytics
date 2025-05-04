@@ -7,6 +7,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/index.css">
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        main {
+            flex: 1 0 auto;
+        }
+
+        .footer {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 1rem;
+            background-color: #1a1a1a;
+            color: #ccc;
+        }
+
         .auth-buttons {
             display: flex;
             align-items: center;
@@ -23,6 +43,69 @@
         }
         .logo {
             margin-right: auto;
+        }
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 50vh;
+            margin-top: -5vh;
+        }
+        .auth-container .card {
+            background: rgba(33, 33, 33, 0.9);
+            border-radius: 12px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .auth-container .form-group {
+            margin-bottom: 1rem;
+        }
+        .auth-container input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+        .auth-container input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .auth-container .btn {
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 1rem;
+        }
+        .auth-container .btn-link {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .auth-container .auth-title {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .auth-container .alert {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 6px;
+        }
+        #registerForm .form-group {
+            margin-bottom: 0.75rem;
+        }
+        #registerForm .btn-link {
+            margin-top: 0.5rem;
+            display: block;
+            text-align: center;
+        }
+        .auth-container .card-body {
+            padding: 1.5rem;
+        }
+        .auth-container .btn-primary {
+            margin-top: 1.5rem;
         }
     </style>
 </head>
@@ -43,16 +126,15 @@
             </div>
         </div>
     </header>
-    
+
     <main>
         <section class="hero">
             <div class="container">
-                <!-- Блок аутентификации -->
                 <div class="auth-container" id="authSection">
                     <div class="card">
                         <div class="card-body">
                             <h3 class="auth-title" id="authTitle">Вход</h3>
-                            
+
                             <form id="loginForm" class="auth-form">
                                 <div class="form-group">
                                     <input type="text" id="username" placeholder="Имя пользователя" required autocomplete="off">
@@ -63,7 +145,7 @@
                                 <button type="submit" class="btn btn-primary">Войти</button>
                                 <button type="button" class="btn btn-link" id="toggleRegister">Зарегистрироваться</button>
                             </form>
-                            
+
                             <form id="registerForm" class="auth-form hidden">
                                 <div class="form-group">
                                     <input type="text" id="regUsername" placeholder="Имя пользователя" required autocomplete="off">
@@ -80,23 +162,21 @@
                                 <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
                                 <button type="button" class="btn btn-link" id="toggleLogin">Уже есть аккаунт? Войти</button>
                             </form>
-                            
+
                             <div class="alert alert-danger hidden" id="authError"></div>
                         </div>
                     </div>
                 </div>
-        
-                <!-- Основной контент (видим только после аутентификации) -->
+
                 <div id="mainContent" class="hidden">
                     <div class="analytics-container">
                         <div class="card">
                             <div class="card-body">
-                                
+
                                 <form id="chatForm" class="analytics-form">
                                     <div class="form-group">
                                         <label for="chat_name">Имя чата или ID:</label>
-                                        <input type="text" id="chat_name" required 
-                                               placeholder="Например: @durov или 123456789">
+                                        <input type="text" id="chat_name" required placeholder="Например: @durov или 123456789">
                                     </div>
 
                                     <div class="form-row">
@@ -115,9 +195,7 @@
                                         <input type="number" id="min_word_length" value="5" min="1">
                                     </div>
 
-                                    <button type="submit" class="btn btn-primary">
-                                        Анализировать
-                                    </button>
+                                    <button type="submit" class="btn btn-primary">Анализировать</button>
                                 </form>
 
                                 <div class="progress-container" id="progressContainer">
@@ -131,11 +209,11 @@
                 </div>
             </div>
         </section>
-
-        <footer class="footer">
-            <p>&copy; 2025 Semantic Analysis. Все права защищены.</p>
-        </footer>
     </main>
+
+    <footer class="footer">
+        <p>&copy; 2025 Semantic Analysis. Все права защищены.</p>
+    </footer>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
