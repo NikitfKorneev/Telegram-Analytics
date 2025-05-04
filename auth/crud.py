@@ -12,7 +12,9 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
     ).offset(skip).limit(limit).all()
 
 def get_user(db: Session, user_id: int):
-    return db.query(models.User).filter(models.User.id == user_id).first()
+    return db.query(models.User).options(
+        joinedload(models.User.role).joinedload(models.Role.permissions)
+    ).filter(models.User.id == user_id).first()
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()

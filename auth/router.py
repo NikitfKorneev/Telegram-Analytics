@@ -141,13 +141,23 @@ async def delete_file(
 @router.get("/users/")
 @require_permission("manage_users")
 async def get_users(
-    skip: int = 0,
-    limit: int = 100,
     current_user: models.User = Depends(utils.get_current_user),
     db: Session = Depends(get_db)
 ):
-    users = crud.get_users(db, skip=skip, limit=limit)
+    users = db.query(models.User).all()
     return users
+
+@router.get("/users/{user_id}")
+@require_permission("manage_users")
+async def get_user(
+    user_id: int,
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
 
 @router.put("/users/{user_id}")
 @require_permission("manage_users")
@@ -170,6 +180,23 @@ async def update_user_role(
     db.refresh(user)
     return user
 
+@router.post("/users/{user_id}/reset-password")
+@require_permission("manage_users")
+async def reset_user_password(
+    user_id: int,
+    password_data: dict,
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    hashed_password = utils.get_password_hash(password_data["new_password"])
+    user.hashed_password = hashed_password
+    db.commit()
+    return {"message": "Password updated successfully"}
+
 @router.delete("/users/{user_id}")
 @require_permission("manage_users")
 async def delete_user(
@@ -177,34 +204,13 @@ async def delete_user(
     current_user: models.User = Depends(utils.get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Нельзя удалить самого себя
-    if user_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot delete yourself")
-    
     user = crud.get_user(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    crud.delete_user(db, user_id)
-    return {"message": "User deleted successfully"}
-
-@router.post("/users/{user_id}/reset-password")
-@require_permission("manage_users")
-async def reset_user_password(
-    user_id: int,
-    current_user: models.User = Depends(utils.get_current_user),
-    db: Session = Depends(get_db)
-):
-    # Нельзя сбросить пароль самому себе
-    if user_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Cannot reset your own password")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
-    user = crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Сбрасываем пароль на "0000"
-    user.hashed_password = utils.get_password_hash("0000")
+    db.delete(user)
     db.commit()
-    db.refresh(user)
-    return {"message": "Password reset successfully"}
+    return {"message": "User deleted successfully"}

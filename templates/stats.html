@@ -70,38 +70,97 @@
             padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
         }
 
+        .user-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .user-card[data-role="admin"]::before {
+            background-color: #dc3545;
+        }
+
+        .user-card[data-role="user"]::before {
+            background-color: #28a745;
+        }
+
+        .user-card[data-role="userplus"]::before {
+            background-color: #007bff;
+        }
+
+        .user-card[data-role="none"]::before {
+            background-color: #6c757d;
+        }
+        
         .user-info {
             border-bottom: 1px solid #dee2e6;
             padding-bottom: 15px;
             margin-bottom: 15px;
+            padding-left: 10px;
         }
 
+        .user-info .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .role-badge.admin {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .role-badge.user {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+
+        .role-badge.userplus {
+            background-color: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+        }
+
+        .role-badge.none {
+            background-color: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+        }
+        
         .user-info h3 {
             color: #2c3e50;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
         }
-
+        
         .user-info p {
             color: #6c757d;
             margin-bottom: 5px;
         }
-
+        
         .role-select {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 6px;
             margin-bottom: 15px;
         }
-
+        
         .permissions-list {
             background: #f8f9fa;
             padding: 15px;
             border-radius: 6px;
             margin-bottom: 15px;
         }
-
+        
         .permissions-list h4 {
             color: #2c3e50;
             margin-bottom: 10px;
@@ -155,6 +214,152 @@
         body.dark-theme .form-select:focus {
             background-color: #2d2d2d;
             color: #ffffff;
+        }
+
+        body.dark-theme .history-item:hover {
+            background-color: #333 !important;
+            color: #fff !important;
+        }
+
+        body.dark-theme .role-badge {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Admin panel styles */
+        .admin-content {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        
+        .user-card {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .user-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .user-card[data-role="admin"]::before {
+            background-color: #dc3545;
+        }
+
+        .user-card[data-role="user"]::before {
+            background-color: #28a745;
+        }
+
+        .user-card[data-role="userplus"]::before {
+            background-color: #007bff;
+        }
+
+        .user-card[data-role="none"]::before {
+            background-color: #6c757d;
+        }
+        
+        .user-info {
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+        }
+
+        .user-info .role-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .role-badge.admin {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+
+        .role-badge.user {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+
+        .role-badge.userplus {
+            background-color: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+        }
+
+        .role-badge.none {
+            background-color: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+        }
+        
+        .user-info h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .user-info p {
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .role-select {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .permissions-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+        
+        .permissions-list h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        /* Dark theme styles for admin panel */
+        body.dark-theme .user-card {
+            background: #2d2d2d;
+            border-color: #444;
+        }
+        
+        body.dark-theme .user-info {
+            border-color: #444;
+        }
+        
+        body.dark-theme .user-info h3 {
+            color: #ffffff;
+        }
+        
+        body.dark-theme .user-info p {
+            color: #adb5bd;
+        }
+
+        body.dark-theme .role-badge {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        body.dark-theme .role-select,
+        body.dark-theme .permissions-list {
+            background: #1a1a1a;
         }
 
         /* Custom modal styles */
@@ -254,6 +459,46 @@
         body.dark-theme .history-item:hover {
             background-color: #333 !important;
             color: #fff !important;
+        }
+
+        /* Password change form styles */
+        #changePasswordForm {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        #changePasswordForm .form-label {
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        #changePasswordForm .form-control {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        
+        #changePasswordForm .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        
+        /* Dark theme styles for password form */
+        body.dark-theme #changePasswordForm .form-label {
+            color: #ffffff;
+        }
+        
+        body.dark-theme #changePasswordForm .form-control {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border-color: #444;
+        }
+        
+        body.dark-theme #changePasswordForm .form-control:focus {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border-color: #80bdff;
         }
     </style>
 </head>
@@ -412,22 +657,22 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                    <ul class="nav nav-tabs" id="myTab" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">Анализ</button>
+                            <button class="nav-link active" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab" aria-controls="analysis" aria-selected="true">Анализ</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">История</button>
+                            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">История</button>
                         </li>
                         <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab">Смена пароля</button>
+                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="false">Смена пароля</button>
                         </li>
                         <li class="nav-item" role="presentation" id="adminTab" style="display: none;">
-                            <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" type="button" role="tab">Админ-панель</button>
+                            <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" type="button" role="tab" aria-controls="admin" aria-selected="false">Админ панель</button>
                         </li>
                     </ul>
-                    <div class="tab-content mt-3" id="settingsTabContent">
-                        <div class="tab-pane fade show active" id="analysis" role="tabpanel">
+                    <div class="tab-content" id="myTabContent">
+                        <div class="tab-pane fade show active" id="analysis" role="tabpanel" aria-labelledby="analysis-tab">
                             <form id="analysisForm">
                                 <div class="mb-3">
                                     <label for="min_word_length" class="form-label">Минимальная длина слова</label>
@@ -443,12 +688,12 @@
                                 </div>
                             </form>
                         </div>
-                        <div class="tab-pane fade" id="history" role="tabpanel">
+                        <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
                             <div class="history-list" id="historyList">
                                 <!-- Здесь будет список истории -->
                             </div>
                         </div>
-                        <div class="tab-pane fade" id="password" role="tabpanel">
+                        <div class="tab-pane fade" id="password" role="tabpanel" aria-labelledby="password-tab">
                             <form id="changePasswordForm">
                                 <div class="mb-3">
                                     <label for="email" class="form-label">Email</label>
@@ -468,9 +713,12 @@
                                 </div>
                             </form>
                         </div>
-                        <div class="tab-pane fade" id="admin" role="tabpanel">
-                            <div id="usersList">
-                                <!-- Здесь будет список пользователей -->
+                        <div class="tab-pane fade" id="admin" role="tabpanel" aria-labelledby="admin-tab">
+                            <div class="admin-content">
+                                <h2 class="text-center mb-4">Управление пользователями</h2>
+                                <div id="usersList">
+                                    <!-- Здесь будет список пользователей -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -486,6 +734,67 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/script.js"></script>
     <script>
+        // Функция для изменения роли пользователя
+        async function changeUserRole(userId, roleId) {
+            try {
+                const response = await fetch(`/auth/users/${userId}?role_id=${roleId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Не удалось изменить роль пользователя');
+                }
+
+                // Получаем обновленные данные пользователя
+                const userResponse = await fetch(`/auth/users/${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (!userResponse.ok) {
+                    throw new Error('Не удалось получить обновленные данные пользователя');
+                }
+
+                const updatedUser = await userResponse.json();
+                
+                // Обновляем карточку пользователя
+                const userCard = document.querySelector(`[data-user-id="${userId}"]`);
+                if (userCard) {
+                    const roleName = updatedUser.role ? updatedUser.role.name.toLowerCase() : 'none';
+                    userCard.setAttribute('data-role', roleName);
+                    
+                    const roleBadge = userCard.querySelector('.role-badge');
+                    if (roleBadge) {
+                        roleBadge.className = `role-badge ${roleName}`;
+                        roleBadge.textContent = updatedUser.role ? updatedUser.role.name : 'Без роли';
+                    }
+
+                    // Обновляем список разрешений
+                    const permissionsList = userCard.querySelector('.permissions-list div');
+                    if (permissionsList) {
+                        permissionsList.innerHTML = updatedUser.role && updatedUser.role.permissions ? 
+                            updatedUser.role.permissions.map(p => 
+                                `<span class="badge bg-primary permission-badge">${p.name}</span>`
+                            ).join('') : 
+                            'Нет разрешений';
+                    }
+
+                    // Обновляем выбранное значение в select
+                    const roleSelect = userCard.querySelector(`#role-${userId}`);
+                    if (roleSelect) {
+                        roleSelect.value = roleId;
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка изменения роли:', error);
+                alert(error.message);
+            }
+        }
+
         // Функция для загрузки списка пользователей
         async function loadUsers() {
             try {
@@ -506,11 +815,20 @@
                 users.forEach(user => {
                     const userCard = document.createElement('div');
                     userCard.className = 'user-card';
+                    const roleName = user.role ? user.role.name.toLowerCase() : 'none';
+                    userCard.setAttribute('data-role', roleName);
+                    userCard.setAttribute('data-user-id', user.id);
+                    
+                    const roleBadgeClass = `role-badge ${roleName}`;
+                    const roleDisplayName = user.role ? user.role.name : 'Без роли';
+                    
                     userCard.innerHTML = `
                         <div class="user-info">
-                            <h3>${user.username}</h3>
+                            <h3>
+                                ${user.username}
+                                <span class="${roleBadgeClass}">${roleDisplayName}</span>
+                            </h3>
                             <p>Email: ${user.email}</p>
-                            <p>Роль: ${user.role ? user.role.name : 'Не назначена'}</p>
                         </div>
                         <div class="role-select">
                             <label for="role-${user.id}" class="form-label">Изменить роль:</label>
@@ -530,13 +848,9 @@
                                     'Нет разрешений'}
                             </div>
                         </div>
-                        <div class="mt-3 d-flex gap-2">
-                            <button class="btn btn-warning flex-grow-1" onclick="resetUserPassword(${user.id})" ${user.id === currentUserId ? 'disabled' : ''}>
-                                Сбросить пароль
-                            </button>
-                            <button class="btn btn-danger flex-grow-1" onclick="deleteUser(${user.id})" ${user.id === currentUserId ? 'disabled' : ''}>
-                                Удалить пользователя
-                            </button>
+                        <div class="mt-3">
+                            <button class="btn btn-warning w-100 mb-2" onclick="resetUserPassword(${user.id})">Сбросить пароль</button>
+                            <button class="btn btn-danger w-100" onclick="deleteUser(${user.id})">Удалить пользователя</button>
                         </div>
                     `;
                     usersList.appendChild(userCard);
@@ -547,48 +861,26 @@
             }
         }
 
-        // Функция для изменения роли пользователя
-        async function changeUserRole(userId, roleId) {
-            try {
-                const response = await fetch(`/auth/users/${userId}?role_id=${roleId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Не удалось изменить роль пользователя');
-                }
-                
-                // Перезагружаем список пользователей
-                loadUsers();
-            } catch (error) {
-                console.error('Ошибка изменения роли:', error);
-                alert(error.message);
-            }
-        }
-
         // Функция для сброса пароля пользователя
         async function resetUserPassword(userId) {
-            if (!confirm('Вы уверены, что хотите сбросить пароль этого пользователя на "0000"?')) {
-                return;
-            }
+            const newPassword = prompt('Введите новый пароль:');
+            if (!newPassword) return;
 
             try {
                 const response = await fetch(`/auth/users/${userId}/reset-password`, {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ new_password: newPassword })
                 });
                 
                 if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.detail || 'Не удалось сбросить пароль');
+                    throw new Error('Не удалось сбросить пароль пользователя');
                 }
                 
-                alert('Пароль успешно сброшен на "0000"');
+                alert('Пароль успешно сброшен');
             } catch (error) {
                 console.error('Ошибка сброса пароля:', error);
                 alert(error.message);
@@ -597,9 +889,7 @@
 
         // Функция для удаления пользователя
         async function deleteUser(userId) {
-            if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) {
-                return;
-            }
+            if (!confirm('Вы уверены, что хотите удалить этого пользователя?')) return;
 
             try {
                 const response = await fetch(`/auth/users/${userId}`, {
@@ -610,8 +900,7 @@
                 });
                 
                 if (!response.ok) {
-                    const data = await response.json();
-                    throw new Error(data.detail || 'Не удалось удалить пользователя');
+                    throw new Error('Не удалось удалить пользователя');
                 }
                 
                 // Перезагружаем список пользователей
@@ -647,9 +936,11 @@
         // Функция для проверки прав администратора
         async function checkAdminAccess() {
             try {
-                console.log('Checking admin access...');
                 const token = localStorage.getItem('token');
-                console.log('Token:', token);
+                if (!token) {
+                    document.getElementById('adminTab').style.display = 'none';
+                    return;
+                }
                 
                 const response = await fetch('/auth/users/', {
                     headers: {
@@ -657,14 +948,11 @@
                     }
                 });
                 
-                console.log('Response status:', response.status);
                 if (response.ok) {
-                    console.log('Admin access granted');
                     document.getElementById('adminTab').style.display = 'block';
                     // Загружаем список пользователей при открытии вкладки админ-панели
                     document.getElementById('admin-tab').addEventListener('shown.bs.tab', loadUsers);
                 } else {
-                    console.log('Admin access denied');
                     document.getElementById('adminTab').style.display = 'none';
                 }
             } catch (error) {
@@ -782,6 +1070,13 @@
 
         // Загружаем историю при открытии вкладки истории
         document.getElementById('history-tab').addEventListener('shown.bs.tab', loadHistory);
+
+        // Удаляем токен из localStorage при выходе из аккаунта
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            window.location.reload();
+        });
     </script>
 </body>
 </html>

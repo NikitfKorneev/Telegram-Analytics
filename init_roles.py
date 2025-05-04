@@ -1,30 +1,31 @@
-from auth.database import SessionLocal, engine
-from auth.models import Base, Role
-from auth.init_permissions import init_permissions
+from auth.database import SessionLocal
+from auth.models import Role
 
 def init_roles():
-    # Создаем все таблицы
-    Base.metadata.create_all(bind=engine)
-    
     db = SessionLocal()
     try:
-        # Проверяем, существуют ли роли
-        if db.query(Role).count() == 0:
-            # Создаем роли по умолчанию
-            roles = [
-                Role(name="admin", description="Administrator with full access"),
-                Role(name="user", description="Regular user"),
-                Role(name="userplus", description="User with extended privileges")
-            ]
+        # Проверяем существующие роли
+        existing_roles = db.query(Role).all()
+        if existing_roles:
+            print("Роли уже существуют:")
+            for role in existing_roles:
+                print(f"ID: {role.id}, Name: {role.name}, Description: {role.description}")
+            return
+
+        # Создаем роли
+        roles = [
+            Role(name="admin", description="Administrator with full access"),
+            Role(name="user", description="Regular user"),
+            Role(name="userplus", description="User with extended privileges")
+        ]
+        
+        for role in roles:
+            db.add(role)
+        db.commit()
+        print("Роли успешно созданы:")
+        for role in roles:
+            print(f"ID: {role.id}, Name: {role.name}, Description: {role.description}")
             
-            db.add_all(roles)
-            db.commit()
-            print("Роли успешно созданы")
-            
-            # Инициализируем разрешения для ролей
-            init_permissions()
-        else:
-            print("Роли уже существуют")
     except Exception as e:
         print(f"Произошла ошибка: {str(e)}")
         db.rollback()
