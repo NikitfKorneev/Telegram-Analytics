@@ -40,9 +40,37 @@ from pydantic import BaseModel
 from telegram_auth import TelegramAuth
 import signal
 import sys
+from contextlib import asynccontextmanager
+import uvicorn
 
 models.Base.metadata.create_all(bind=engine)
-app = FastAPI()
+
+# Flag for tracking application state
+is_shutting_down = False
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown"""
+    global telegram_available
+    try:
+        # Startup
+        is_authorized = await telegram_auth.check_auth()
+        if not is_authorized:
+            print("Telegram авторизация не требуется для просмотра статистики")
+            telegram_available = False
+        else:
+            print("Telegram авторизация успешна")
+            telegram_available = True
+        yield
+    finally:
+        # Shutdown
+        try:
+            await telegram_auth.disconnect()
+            print("Telegram client disconnected successfully")
+        except Exception as e:
+            print(f"Ошибка при отключении от Telegram: {str(e)}")
+
+app = FastAPI(lifespan=lifespan)
 
 # Add session middleware with a secret key
 app.add_middleware(SessionMiddleware, secret_key=secrets.token_urlsafe(32))
@@ -125,6 +153,14 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
                 offset_id = history.messages[-1].id
                 await asyncio.sleep(0.1)
 
+            # Сохраняем запись в историю при первой загрузке
+            params = {
+                'min_word_length': 5,
+                'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
+                'end_date': end_date.strftime('%Y-%m-%d') if end_date else ''
+            }
+            save_to_history(filename, params)
+
             await websocket.send_json({
                 "progress": 100,
                 "status": "completed",
@@ -138,49 +174,22 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
 # Flag for tracking Telegram availability
 telegram_available = False
 
-# Flag for tracking application state
-is_shutting_down = False
-
-def signal_handler(sig, frame):
-    """Handle shutdown signals"""
+def handle_exit(sig, frame):
+    """Handle exit signals"""
     global is_shutting_down
     if not is_shutting_down:
         is_shutting_down = True
         print("\nGracefully shutting down...")
-        asyncio.create_task(shutdown_event())
-        sys.exit(0)
+        # Get the current event loop
+        loop = asyncio.get_event_loop()
+        # Create a task to disconnect Telegram client
+        loop.create_task(telegram_auth.disconnect())
+        # Stop the event loop
+        loop.stop()
 
 # Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-@app.on_event("startup")
-async def startup_event():
-    """Handle application startup"""
-    global telegram_available
-    try:
-        is_authorized = await telegram_auth.check_auth()
-        if not is_authorized:
-            print("Telegram авторизация не требуется для просмотра статистики")
-            telegram_available = False
-        else:
-            print("Telegram авторизация успешна")
-            telegram_available = True
-    except Exception as e:
-        print(f"Ошибка при подключении к Telegram: {str(e)}")
-        telegram_available = False
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Handle application shutdown"""
-    global is_shutting_down
-    if not is_shutting_down:
-        is_shutting_down = True
-        try:
-            await telegram_auth.disconnect()
-            print("Telegram client disconnected successfully")
-        except Exception as e:
-            print(f"Ошибка при отключении от Telegram: {str(e)}")
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -283,10 +292,19 @@ def save_to_history(filename, params):
     history_file = history_dir / 'history.json'
     history = []
     
-    if history_file.exists():
-        with open(history_file, 'r', encoding='utf-8') as f:
-            history = json.load(f)
+    # Создаем директорию, если она не существует
+    history_dir.mkdir(exist_ok=True)
     
+    # Читаем существующую историю, если файл существует
+    if history_file.exists():
+        try:
+            with open(history_file, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+        except json.JSONDecodeError:
+            # Если файл поврежден, начинаем с пустого списка
+            history = []
+    
+    # Создаем новую запись
     history_item = {
         'id': str(uuid.uuid4()),
         'timestamp': datetime.now().isoformat(),
@@ -294,10 +312,16 @@ def save_to_history(filename, params):
         'params': params
     }
     
-    history.append(history_item)
+    # Добавляем новую запись в начало списка
+    history.insert(0, history_item)
     
-    with open(history_file, 'w', encoding='utf-8') as f:
-        json.dump(history, f, ensure_ascii=False, indent=2)
+    # Сохраняем обновленную историю
+    try:
+        with open(history_file, 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving history: {str(e)}")
+        return None
     
     return history_item['id']
 
@@ -314,7 +338,7 @@ async def get_history_list():
     return JSONResponse(history)
 
 @app.get("/load_history/{history_id}")
-async def load_history(history_id: str):
+async def load_history(history_id: str, request: Request):
     """Загружает конкретный элемент истории"""
     history_file = history_dir / 'history.json'
     if not history_file.exists():
@@ -506,5 +530,12 @@ async def complete_qr_auth(request: Request):
     return JSONResponse(result)
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    config = uvicorn.Config(
+        app=app,
+        host="0.0.0.0",
+        port=8000,
+        loop="asyncio",
+        log_level="info"
+    )
+    server = uvicorn.Server(config)
+    server.run()

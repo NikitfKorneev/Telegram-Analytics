@@ -107,38 +107,62 @@ def create_pdf(filepath, plots, word_count):
             c.setFont("DejaVuSans", 12)
             c.drawString(2*cm, height - 6*cm, "Не удалось проанализировать частоту слов")
 
-        # Добавление графиков
-        c.showPage()
-        c.setFont("DejaVuSans", 16)
-        c.drawString(2*cm, height - 2*cm, "Визуализация данных:")
-        c.setFont("DejaVuSans", 12)
+        # Заголовки для каждой диаграммы
+        diagram_titles = [
+            "Активность по месяцам и дням",
+            "Распределение сообщений по часам суток",
+            "Распределение длины сообщений",
+            "Топ-10 самых активных участников",
+            "Облако слов",
+            "Эмоциональный окрас сообщений по дням",
+            "Распределение длины слов",
+            "Активность по дням недели",
+            "Средняя длина сообщений по отправителям",
+            "Активность по времени суток"
+        ]
 
-        y_position = height - 4*cm
+        # Добавление графиков
         for i, plot_data in enumerate(plots):
             if not plot_data:  # Пропускаем пустые графики
                 continue
                 
             try:
+                # Создаем новую страницу для каждого графика
+                c.showPage()
+                
+                # Добавляем заголовок для графика
+                c.setFont("DejaVuSans", 16)
+                c.drawString(2*cm, height - 2*cm, diagram_titles[i])
+                c.setFont("DejaVuSans", 12)
+                
                 # Декодирование base64 данных
                 plot_bytes = base64.b64decode(plot_data)
                 
-                # Сохранение во временный файл
-                temp_file = f"temp_plot_{i}.png"
+                # Сохранение во временный файл с уникальным именем
+                temp_file = f"temp_plot_{i}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
                 with open(temp_file, 'wb') as f:
                     f.write(plot_bytes)
                 
-                # Добавление изображения в PDF с сохранением пропорций
-                # Используем максимальную ширину 16 см и высоту 10 см
-                c.drawImage(temp_file, 2*cm, y_position - 10*cm, width=16*cm, height=10*cm, preserveAspectRatio=True)
-                y_position -= 12*cm
+                # Используем большую часть страницы для изображения
+                image_width = width - 4*cm
+                image_height = height - 6*cm
+                
+                # Центрируем изображение на странице
+                x_position = 2*cm
+                y_position = height - 6*cm
+                
+                c.drawImage(
+                    temp_file,
+                    x_position,
+                    y_position - image_height,
+                    width=image_width,
+                    height=image_height,
+                    preserveAspectRatio=True
+                )
                 
                 # Удаление временного файла
                 os.remove(temp_file)
                 
-                if y_position < 4*cm:
-                    c.showPage()
-                    c.setFont("DejaVuSans", 12)
-                    y_position = height - 2*cm
             except Exception as e:
                 print(f"Error adding plot {i} to PDF: {str(e)}")
                 continue

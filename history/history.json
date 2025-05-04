@@ -1,5 +1,15 @@
 [
   {
+    "id": "9da254ac-29f6-4880-a9bf-23925502d08d",
+    "timestamp": "2025-05-04T18:23:57.043865",
+    "filename": "chat_history_2174043435.txt",
+    "params": {
+      "min_word_length": 5,
+      "start_date": "",
+      "end_date": ""
+    }
+  },
+  {
     "id": "a9cd789b-5fc1-47f4-979e-789051a30681",
     "timestamp": "2025-05-03T03:50:10.038175",
     "filename": "chat_history_2174043435.txt",
