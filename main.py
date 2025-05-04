@@ -37,6 +37,9 @@ import re
 from pdf_generator import create_pdf
 import uuid
 from pydantic import BaseModel
+from telegram_auth import TelegramAuth
+import signal
+import sys
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -52,7 +55,9 @@ templates = Jinja2Templates(directory="templates")
 api_id = 24612694
 api_hash = '830e613e5101bd49150bf208e29a1e4c'
 session_name = 'my_session'
-client = TelegramClient(session_name, api_id, api_hash)
+
+# Initialize TelegramAuth
+telegram_auth = TelegramAuth(api_id, api_hash, session_name)
 
 # Регистрируем шрифт для поддержки кириллицы
 pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
@@ -65,47 +70,24 @@ def get_word_frequency(filename, min_word_length=5):
         words = re.findall(r'\b[а-яА-ЯёЁ]{' + str(min_word_length) + ',}\b', text)
         return Counter(words).most_common(20)
 
-async def start_telegram_client(phone_number: str, code: str = None, password: str = None):
-    try:
-        await client.connect()
-        if not await client.is_user_authorized():
-            if not code:
-                try:
-                    await client.send_code_request(phone_number)
-                    print(f"Код подтверждения отправлен на номер {phone_number}")  # Для отладки
-                    return {"status": "code_required", "message": "Код подтверждения отправлен"}
-                except Exception as e:
-                    print(f"Ошибка при отправке кода: {str(e)}")  # Для отладки
-                    return {"status": "error", "message": f"Ошибка при отправке кода: {str(e)}"}
-            try:
-                await client.sign_in(phone_number, code)
-            except SessionPasswordNeededError:
-                if not password:
-                    return {"status": "password_required", "message": "Требуется пароль двухфакторной аутентификации"}
-                await client.sign_in(password=password)
-        return {"status": "success", "message": "Авторизация успешна"}
-    except Exception as e:
-        print(f"Ошибка авторизации: {str(e)}")  # Для отладки
-        return {"status": "error", "message": str(e)}
-
 async def get_chat_history(chat_name, websocket, start_date=None, end_date=None):
     try:
-        if not client.is_connected():
-            await client.connect()
+        if not telegram_auth.client.is_connected():
+            await telegram_auth.client.connect()
 
         await websocket.send_json({"status": "started", "message": "Получаем информацию о чате..."})
         
-        chat = await client.get_entity(chat_name)
+        chat = await telegram_auth.client.get_entity(chat_name)
         filename = f"chat_history_{chat.id if hasattr(chat, 'id') else chat_name.strip('@')}.txt"
 
         with open(filename, 'w', encoding='utf-8') as file:
             offset_id = 0
             limit = 100
             total_messages = 0
-            total_count = (await client.get_messages(chat, limit=1)).total
+            total_count = (await telegram_auth.client.get_messages(chat, limit=1)).total
 
             while True:
-                history = await client(GetHistoryRequest(
+                history = await telegram_auth.client(GetHistoryRequest(
                     peer=chat,
                     offset_id=offset_id,
                     offset_date=None,
@@ -153,17 +135,32 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
     except Exception as e:
         await websocket.send_json({"status": "error", "message": str(e)})
 
-# Добавляем флаг для отслеживания состояния Telegram
+# Flag for tracking Telegram availability
 telegram_available = False
+
+# Flag for tracking application state
+is_shutting_down = False
+
+def signal_handler(sig, frame):
+    """Handle shutdown signals"""
+    global is_shutting_down
+    if not is_shutting_down:
+        is_shutting_down = True
+        print("\nGracefully shutting down...")
+        asyncio.create_task(shutdown_event())
+        sys.exit(0)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 @app.on_event("startup")
 async def startup_event():
+    """Handle application startup"""
     global telegram_available
     try:
-        if not client.is_connected():
-            await client.connect()
-            
-        if not await client.is_user_authorized():
+        is_authorized = await telegram_auth.check_auth()
+        if not is_authorized:
             print("Telegram авторизация не требуется для просмотра статистики")
             telegram_available = False
         else:
@@ -172,6 +169,18 @@ async def startup_event():
     except Exception as e:
         print(f"Ошибка при подключении к Telegram: {str(e)}")
         telegram_available = False
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Handle application shutdown"""
+    global is_shutting_down
+    if not is_shutting_down:
+        is_shutting_down = True
+        try:
+            await telegram_auth.disconnect()
+            print("Telegram client disconnected successfully")
+        except Exception as e:
+            print(f"Ошибка при отключении от Telegram: {str(e)}")
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -446,6 +455,55 @@ async def change_password(
     db.commit()
     
     return {"message": "Пароль успешно изменен"}
+
+@app.get("/telegram-auth")
+async def telegram_auth_page(request: Request):
+    """Render Telegram authentication page"""
+    return templates.TemplateResponse("telegram_auth.html", {"request": request})
+
+@app.get("/telegram/qr-code")
+async def get_qr_code():
+    """Generate QR code for Telegram login"""
+    result = await telegram_auth.generate_qr_code()
+    return JSONResponse(result)
+
+@app.get("/telegram/verify-qr/{token}")
+async def verify_qr_code(token: str):
+    """Verify QR code login"""
+    result = await telegram_auth.verify_qr_code(token)
+    return JSONResponse(result)
+
+@app.post("/telegram/phone-auth")
+async def phone_auth(request: Request):
+    """Handle phone number authentication"""
+    data = await request.json()
+    phone_number = data.get("phone_number")
+    code = data.get("code")
+    password = data.get("password")
+    
+    result = await telegram_auth.phone_auth(phone_number, code, password)
+    return JSONResponse(result)
+
+@app.get("/telegram/check-auth")
+async def check_telegram_auth():
+    """Check if user is authorized in Telegram"""
+    is_authorized = await telegram_auth.check_auth()
+    return JSONResponse({"authorized": is_authorized})
+
+@app.post("/telegram/complete-qr-auth")
+async def complete_qr_auth(request: Request):
+    """Complete QR code authentication with password"""
+    data = await request.json()
+    password = data.get("password")
+    
+    if not password:
+        return JSONResponse({
+            "status": "error",
+            "message": "Пароль не указан"
+        })
+    
+    result = await telegram_auth.complete_qr_auth(password)
+    return JSONResponse(result)
 
 if __name__ == "__main__":
     import uvicorn
