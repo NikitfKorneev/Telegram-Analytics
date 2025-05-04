@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Результаты анализа</title>
+    <title>Результаты анализа | Semantic Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/welcome.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
+        .stats-content {
+            max-width: 1200px;
+            margin: 40px auto;
             padding: 20px;
-            background-color: #f8f9fa;
         }
         .plot-container {
-            background: white;
+            background: #f5f5f5;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
@@ -22,7 +25,7 @@
             height: auto;
         }
         .stat-card {
-            background: white;
+            background: #f5f5f5;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
@@ -58,28 +61,132 @@
             max-height: 400px;
             overflow-y: auto;
         }
+
+        /* Custom modal styles */
+        .modal-dialog {
+            max-width: none !important;
+            width: 1200px !important;
+            min-width: 1200px !important;
+        }
+        .modal-content {
+            width: 100% !important;
+            min-width: 100% !important;
+            height: 800px !important;
+        }
+        @media (max-width: 1300px) {
+            .modal-dialog {
+                width: 98vw !important;
+                min-width: 98vw !important;
+            }
+            .modal-content {
+                width: 100vw !important;
+                min-width: 100vw !important;
+            }
+        }
+
+        .modal-body {
+            height: calc(100% - 120px); /* Вычитаем высоту header и footer */
+            overflow-y: auto;
+        }
+
+        .modal-header, .modal-footer {
+            width: 100%;
+        }
+
+        .tab-content {
+            height: 100%;
+        }
+
+        .tab-pane {
+            height: 100%;
+        }
+
+        #analysisForm, #changePasswordForm {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .history-list {
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        /* Dark theme styles */
+        body.dark-theme {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        body.dark-theme .plot-container,
+        body.dark-theme .stat-card {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        body.dark-theme .card {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        body.dark-theme .modal-content {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        body.dark-theme .nav-tabs .nav-link {
+            color: #ffffff;
+        }
+
+        body.dark-theme .nav-tabs .nav-link.active {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border-color: #dee2e6 #dee2e6 #2d2d2d;
+        }
+
+        body.dark-theme .form-control {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            border-color: #444;
+        }
+
+        body.dark-theme .form-control:focus {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        body.dark-theme .history-item:hover {
+            background-color: #333 !important;
+            color: #fff !important;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row mb-4">
-            <div class="col">
-                <h1 class="text-center">Результаты анализа</h1>
-                <div class="telegram-status {{ 'available' if telegram_available else 'unavailable' }}">
-                    <p class="mb-0">
-                        {% if telegram_available %}
-                            Telegram подключен и доступен
-                        {% else %}
-                            Telegram не подключен. Некоторые функции могут быть недоступны
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="button-group">
-                    <a href="/welcome" class="btn btn-primary">Назад</a>
-                    <a href="/download_pdf" class="btn btn-success">Скачать PDF отчет</a>
-                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changeDataModal">Настройки</button>
-                </div>
-            </div>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <a href="/" style="text-decoration: none; color: inherit;">Semantic Analysis</a>
+        </div>
+        <div class="auth-buttons">
+            <a href="/welcome" class="btn-secondary">Назад</a>
+            <a href="/download_pdf" class="btn-secondary">Скачать PDF</a>
+            <a href="#" class="btn-secondary" data-bs-toggle="modal" data-bs-target="#changeDataModal">Настройки</a>
+            <button id="theme-toggle" class="btn-theme">🌙</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="stats-content">
+        <h1 class="text-center mb-4">Результаты анализа</h1>
+        <div class="telegram-status {{ 'available' if telegram_available else 'unavailable' }}">
+            <p class="mb-0">
+                {% if telegram_available %}
+                    Telegram подключен и доступен
+                {% else %}
+                    Telegram не подключен. Некоторые функции могут быть недоступны
+                {% endif %}
+            </p>
         </div>
 
         <div class="stat-card">
@@ -194,11 +301,16 @@
                 </div>
             </div>
         </div>
-    </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2025 Semantic Analysis. Все права защищены.</p>
+    </footer>
 
     <!-- Модальное окно для изменения параметров -->
     <div class="modal fade" id="changeDataModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Настройки</h5>
@@ -269,6 +381,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/script.js"></script>
     <script>
         // Функция для загрузки истории
         async function loadHistory() {
