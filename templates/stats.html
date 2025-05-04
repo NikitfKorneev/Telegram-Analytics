@@ -33,6 +33,31 @@
             gap: 10px;
             margin-bottom: 20px;
         }
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+        .telegram-status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        .telegram-status.available {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .telegram-status.unavailable {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -40,9 +65,19 @@
         <div class="row mb-4">
             <div class="col">
                 <h1 class="text-center">Результаты анализа</h1>
+                <div class="telegram-status {{ 'available' if telegram_available else 'unavailable' }}">
+                    <p class="mb-0">
+                        {% if telegram_available %}
+                            Telegram подключен и доступен
+                        {% else %}
+                            Telegram не подключен. Некоторые функции могут быть недоступны
+                        {% endif %}
+                    </p>
+                </div>
                 <div class="button-group">
                     <a href="/welcome" class="btn btn-primary">Назад</a>
                     <a href="/download_pdf" class="btn btn-success">Скачать PDF отчет</a>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#changeDataModal">Настройки</button>
                 </div>
             </div>
         </div>
@@ -87,5 +122,186 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- Модальное окно настроек -->
+    <div class="modal fade" id="changeDataModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Настройки</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">Анализ</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">История</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password" type="button" role="tab">Смена пароля</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content mt-3" id="settingsTabContent">
+                        <div class="tab-pane fade show active" id="analysis" role="tabpanel">
+                            <form id="changeDataForm">
+                                <div class="mb-3">
+                                    <label for="minWordLength" class="form-label">Минимальная длина слова</label>
+                                    <input type="number" class="form-control" id="minWordLength" value="5" min="1">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="startDate" class="form-label">Начальная дата</label>
+                                    <input type="date" class="form-control" id="startDate">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="endDate" class="form-label">Конечная дата</label>
+                                    <input type="date" class="form-control" id="endDate">
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="history" role="tabpanel">
+                            <div class="history-list" id="historyList">
+                                <!-- Здесь будет список истории -->
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="password" role="tabpanel">
+                            <form id="changePasswordForm">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="currentPassword" class="form-label">Текущий пароль</label>
+                                    <input type="password" class="form-control" id="currentPassword" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newPassword" class="form-label">Новый пароль</label>
+                                    <input type="password" class="form-control" id="newPassword" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="confirmNewPassword" class="form-label">Подтвердите новый пароль</label>
+                                    <input type="password" class="form-control" id="confirmNewPassword" required>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" id="applyChanges">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Функция для загрузки истории
+        async function loadHistory() {
+            try {
+                const response = await fetch('/get_history_list');
+                const history = await response.json();
+                const historyList = document.getElementById('historyList');
+                historyList.innerHTML = '';
+                
+                history.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <div class="d-flex justify-content-between">
+                            <span>${new Date(item.timestamp).toLocaleString()}</span>
+                            <span>${item.filename}</span>
+                        </div>
+                    `;
+                    div.onclick = () => loadHistoryItem(item.id);
+                    historyList.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки истории:', error);
+            }
+        }
+
+        // Функция для загрузки элемента истории
+        async function loadHistoryItem(id) {
+            try {
+                const response = await fetch(`/load_history/${id}`);
+                if (response.ok) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки элемента истории:', error);
+            }
+        }
+
+        // Обработчик изменения данных
+        document.getElementById('applyChanges').addEventListener('click', async () => {
+            const activeTab = document.querySelector('.tab-pane.active');
+            
+            if (activeTab.id === 'analysis') {
+                const minWordLength = document.getElementById('minWordLength').value;
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+
+                try {
+                    const response = await fetch('/update_analysis', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            min_word_length: parseInt(minWordLength),
+                            start_date: startDate,
+                            end_date: endDate
+                        })
+                    });
+
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Ошибка обновления данных:', error);
+                }
+            } else if (activeTab.id === 'password') {
+                const email = document.getElementById('email').value;
+                const currentPassword = document.getElementById('currentPassword').value;
+                const newPassword = document.getElementById('newPassword').value;
+                const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+                if (newPassword !== confirmNewPassword) {
+                    alert('Новые пароли не совпадают');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/change_password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: email,
+                            current_password: currentPassword,
+                            new_password: newPassword
+                        })
+                    });
+
+                    if (response.ok) {
+                        alert('Пароль успешно изменен');
+                        window.location.reload();
+                    } else {
+                        const data = await response.json();
+                        alert(data.detail || 'Ошибка при смене пароля');
+                    }
+                } catch (error) {
+                    console.error('Ошибка смены пароля:', error);
+                    alert('Произошла ошибка при смене пароля');
+                }
+            }
+        });
+
+        // Загружаем историю при открытии вкладки истории
+        document.getElementById('history-tab').addEventListener('shown.bs.tab', loadHistory);
+    </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, Request, Depends, Form, HTTPException, status
-from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response
+from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -35,6 +35,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 from collections import Counter
 import re
 from pdf_generator import create_pdf
+import uuid
+from pydantic import BaseModel
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -146,10 +148,25 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
     except Exception as e:
         await websocket.send_json({"status": "error", "message": str(e)})
 
+# Добавляем флаг для отслеживания состояния Telegram
+telegram_available = False
+
 @app.on_event("startup")
 async def startup_event():
-    if not await start_telegram_client():
-        print("Не удалось авторизоваться в Telegram. Некоторые функции могут быть недоступны")
+    global telegram_available
+    try:
+        if not client.is_connected():
+            await client.connect()
+            
+        if not await client.is_user_authorized():
+            print("Telegram авторизация не требуется для просмотра статистики")
+            telegram_available = False
+        else:
+            print("Telegram авторизация успешна")
+            telegram_available = True
+    except Exception as e:
+        print(f"Ошибка при подключении к Telegram: {str(e)}")
+        telegram_available = False
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -239,12 +256,97 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         await websocket.close()
 
+# Создаем директорию для хранения истории
+history_dir = Path('history')
+history_dir.mkdir(exist_ok=True)
+
+def save_to_history(filename, params):
+    """Сохраняет информацию о генерации в историю"""
+    history_file = history_dir / 'history.json'
+    history = []
+    
+    if history_file.exists():
+        with open(history_file, 'r', encoding='utf-8') as f:
+            history = json.load(f)
+    
+    history_item = {
+        'id': str(uuid.uuid4()),
+        'timestamp': datetime.now().isoformat(),
+        'filename': filename,
+        'params': params
+    }
+    
+    history.append(history_item)
+    
+    with open(history_file, 'w', encoding='utf-8') as f:
+        json.dump(history, f, ensure_ascii=False, indent=2)
+    
+    return history_item['id']
+
+@app.get("/get_history_list")
+async def get_history_list():
+    """Возвращает список истории генерации"""
+    history_file = history_dir / 'history.json'
+    if not history_file.exists():
+        return JSONResponse([])
+    
+    with open(history_file, 'r', encoding='utf-8') as f:
+        history = json.load(f)
+    
+    return JSONResponse(history)
+
+@app.get("/load_history/{history_id}")
+async def load_history(history_id: str):
+    """Загружает конкретный элемент истории"""
+    history_file = history_dir / 'history.json'
+    if not history_file.exists():
+        raise HTTPException(status_code=404, detail="История не найдена")
+    
+    with open(history_file, 'r', encoding='utf-8') as f:
+        history = json.load(f)
+    
+    history_item = next((item for item in history if item['id'] == history_id), None)
+    if not history_item:
+        raise HTTPException(status_code=404, detail="Элемент истории не найден")
+    
+    # Сохраняем параметры в сессию
+    request.session['current_file'] = history_item['filename']
+    request.session['analysis_params'] = history_item['params']
+    
+    return RedirectResponse(url=f"/get_history?filename={history_item['filename']}")
+
+@app.post("/update_analysis")
+async def update_analysis(request: Request):
+    """Обновляет параметры анализа"""
+    data = await request.json()
+    
+    # Получаем текущий файл из сессии
+    filename = request.session.get('current_file')
+    if not filename:
+        raise HTTPException(status_code=404, detail="Файл не найден")
+    
+    # Сохраняем новые параметры в сессию
+    request.session['analysis_params'] = {
+        'min_word_length': data.get('min_word_length', 5),
+        'start_date': data.get('start_date'),
+        'end_date': data.get('end_date')
+    }
+    
+    # Сохраняем в историю
+    save_to_history(filename, request.session['analysis_params'])
+    
+    return RedirectResponse(url=f"/get_history?filename={filename}")
+
 @app.get("/get_history")
-async def get_history(request: Request, filename: str, min_word_length: int = 5):
+async def get_history(request: Request, filename: str):
     if not os.path.exists(filename):
         return RedirectResponse(url="/")
 
     try:
+        # Получаем параметры из сессии или используем значения по умолчанию
+        params = request.session.get('analysis_params', {})
+        min_word_length = params.get('min_word_length', 5)
+        
         # Сохраняем имя файла в сессии
         request.session['current_file'] = filename
         
@@ -258,7 +360,8 @@ async def get_history(request: Request, filename: str, min_word_length: int = 5)
             "plot1": plots[1] if len(plots) > 1 else '',
             "plot2": plots[2] if len(plots) > 2 else '',
             "plot3": plots[3] if len(plots) > 3 else '',
-            "plot4": plots[4] if len(plots) > 4 else ''
+            "plot4": plots[4] if len(plots) > 4 else '',
+            "telegram_available": telegram_available
         })
     except Exception as e:
         print(f"Error in get_history: {str(e)}")
@@ -299,6 +402,41 @@ async def download_pdf(request: Request):
     except Exception as e:
         print(f"Error creating PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+class PasswordChange(BaseModel):
+    email: str
+    current_password: str
+    new_password: str
+
+@app.post("/change_password")
+async def change_password(
+    password_data: PasswordChange,
+    db: Session = Depends(get_db)
+):
+    """Изменение пароля пользователя"""
+    # Находим пользователя по email
+    user = crud.get_user_by_email(db, password_data.email)
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="Пользователь с таким email не найден"
+        )
+    
+    # Проверяем текущий пароль
+    if not utils.verify_password(password_data.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Неверный текущий пароль"
+        )
+    
+    # Хешируем новый пароль
+    hashed_password = utils.get_password_hash(password_data.new_password)
+    
+    # Обновляем пароль в базе данных
+    user.hashed_password = hashed_password
+    db.commit()
+    
+    return {"message": "Пароль успешно изменен"}
 
 if __name__ == "__main__":
     import uvicorn
