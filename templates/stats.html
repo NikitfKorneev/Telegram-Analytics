@@ -735,62 +735,66 @@
     <script src="/static/js/script.js"></script>
     <script>
         // Функция для изменения роли пользователя
-        async function changeUserRole(userId, roleId) {
+        async function changeUserRole(userId, newRole) {
             try {
-                const response = await fetch(`/auth/users/${userId}?role_id=${roleId}`, {
+                // Отправляем запрос на изменение роли
+                const response = await fetch(`/auth/users/${userId}?role_id=${newRole}`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
                     }
                 });
-                
+
                 if (!response.ok) {
-                    throw new Error('Не удалось изменить роль пользователя');
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Не удалось изменить роль пользователя');
                 }
 
                 // Получаем обновленные данные пользователя
-                const userResponse = await fetch(`/auth/users/${userId}`, {
+                const updatedUserResponse = await fetch(`/auth/users/${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
                     }
                 });
 
-                if (!userResponse.ok) {
+                if (!updatedUserResponse.ok) {
                     throw new Error('Не удалось получить обновленные данные пользователя');
                 }
 
-                const updatedUser = await userResponse.json();
+                const updatedUser = await updatedUserResponse.json();
                 
-                // Обновляем карточку пользователя
+                // Находим карточку пользователя
                 const userCard = document.querySelector(`[data-user-id="${userId}"]`);
                 if (userCard) {
-                    const roleName = updatedUser.role ? updatedUser.role.name.toLowerCase() : 'none';
-                    userCard.setAttribute('data-role', roleName);
+                    // Обновляем атрибут data-role
+                    userCard.setAttribute('data-role', updatedUser.role?.name?.toLowerCase() || 'none');
                     
+                    // Обновляем бейдж роли
                     const roleBadge = userCard.querySelector('.role-badge');
                     if (roleBadge) {
-                        roleBadge.className = `role-badge ${roleName}`;
-                        roleBadge.textContent = updatedUser.role ? updatedUser.role.name : 'Без роли';
+                        roleBadge.className = `role-badge ${updatedUser.role?.name?.toLowerCase() || 'none'}`;
+                        roleBadge.textContent = updatedUser.role?.name || 'Нет роли';
                     }
-
+                    
                     // Обновляем список разрешений
                     const permissionsList = userCard.querySelector('.permissions-list div');
                     if (permissionsList) {
-                        permissionsList.innerHTML = updatedUser.role && updatedUser.role.permissions ? 
+                        permissionsList.innerHTML = updatedUser.role?.permissions ? 
                             updatedUser.role.permissions.map(p => 
                                 `<span class="badge bg-primary permission-badge">${p.name}</span>`
                             ).join('') : 
                             'Нет разрешений';
                     }
-
-                    // Обновляем выбранное значение в select
+                    
+                    // Обновляем выбранное значение в селекте
                     const roleSelect = userCard.querySelector(`#role-${userId}`);
                     if (roleSelect) {
-                        roleSelect.value = roleId;
+                        roleSelect.value = updatedUser.role_id;
                     }
                 }
             } catch (error) {
-                console.error('Ошибка изменения роли:', error);
+                console.error('Error:', error);
                 alert(error.message);
             }
         }
