@@ -751,48 +751,8 @@
                     throw new Error(errorData.detail || 'Не удалось изменить роль пользователя');
                 }
 
-                // Получаем обновленные данные пользователя
-                const updatedUserResponse = await fetch(`/auth/users/${userId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    }
-                });
-
-                if (!updatedUserResponse.ok) {
-                    throw new Error('Не удалось получить обновленные данные пользователя');
-                }
-
-                const updatedUser = await updatedUserResponse.json();
-                
-                // Находим карточку пользователя
-                const userCard = document.querySelector(`[data-user-id="${userId}"]`);
-                if (userCard) {
-                    // Обновляем атрибут data-role
-                    userCard.setAttribute('data-role', updatedUser.role?.name?.toLowerCase() || 'none');
-                    
-                    // Обновляем бейдж роли
-                    const roleBadge = userCard.querySelector('.role-badge');
-                    if (roleBadge) {
-                        roleBadge.className = `role-badge ${updatedUser.role?.name?.toLowerCase() || 'none'}`;
-                        roleBadge.textContent = updatedUser.role?.name || 'Нет роли';
-                    }
-                    
-                    // Обновляем список разрешений
-                    const permissionsList = userCard.querySelector('.permissions-list div');
-                    if (permissionsList) {
-                        permissionsList.innerHTML = updatedUser.role?.permissions ? 
-                            updatedUser.role.permissions.map(p => 
-                                `<span class="badge bg-primary permission-badge">${p.name}</span>`
-                            ).join('') : 
-                            'Нет разрешений';
-                    }
-                    
-                    // Обновляем выбранное значение в селекте
-                    const roleSelect = userCard.querySelector(`#role-${userId}`);
-                    if (roleSelect) {
-                        roleSelect.value = updatedUser.role_id;
-                    }
-                }
+                // Перезагружаем список пользователей для отображения актуальных данных
+                await loadUsers();
             } catch (error) {
                 console.error('Error:', error);
                 alert(error.message);
@@ -813,13 +773,17 @@
                 }
                 
                 const users = await response.json();
+                console.log('Полученные данные пользователей:', users);
+                
                 const usersList = document.getElementById('usersList');
                 usersList.innerHTML = '';
                 
                 users.forEach(user => {
+                    console.log('Обработка пользователя:', user);
                     const userCard = document.createElement('div');
                     userCard.className = 'user-card';
                     const roleName = user.role ? user.role.name.toLowerCase() : 'none';
+                    console.log('Роль пользователя:', roleName);
                     userCard.setAttribute('data-role', roleName);
                     userCard.setAttribute('data-user-id', user.id);
                     
@@ -1068,6 +1032,14 @@
                 } catch (error) {
                     console.error('Ошибка смены пароля:', error);
                     alert('Произошла ошибка при смене пароля');
+                }
+            } else if (activeTab.id === 'admin') {
+                // Перезагружаем список пользователей для отображения актуальных данных
+                await loadUsers();
+                // Закрываем модальное окно
+                const modal = bootstrap.Modal.getInstance(document.getElementById('changeDataModal'));
+                if (modal) {
+                    modal.hide();
                 }
             }
         });
