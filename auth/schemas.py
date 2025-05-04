@@ -15,6 +15,17 @@ class RoleBase(BaseModel):
 
 class Role(RoleBase):
     id: int
+    permissions: List["Permission"] = []
+
+    class Config:
+        from_attributes = True
+
+class PermissionBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class Permission(PermissionBase):
+    id: int
 
     class Config:
         from_attributes = True
@@ -36,8 +47,10 @@ class UserUpdate(UserBase):
 
 class User(UserBase):
     id: int
+    role_id: Optional[int] = None
+    role: Optional[Role] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

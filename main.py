@@ -42,6 +42,7 @@ import signal
 import sys
 from contextlib import asynccontextmanager
 import uvicorn
+from auth.permissions import require_permission
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -527,6 +528,11 @@ async def complete_qr_auth(request: Request):
     
     result = await telegram_auth.complete_qr_auth(password)
     return JSONResponse(result)
+
+@app.get("/admin", response_class=HTMLResponse)
+@require_permission("manage_users")
+async def admin_panel(request: Request, current_user: User = Depends(get_current_active_user)):
+    return templates.TemplateResponse("admin.html", {"request": request})
 
 if __name__ == "__main__":
     config = uvicorn.Config(

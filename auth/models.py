@@ -1,7 +1,23 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
+
+# Таблица связи ролей и разрешений
+role_permissions = Table(
+    'role_permissions',
+    Base.metadata,
+    Column('role_id', Integer, ForeignKey('roles.id')),
+    Column('permission_id', Integer, ForeignKey('permissions.id'))
+)
+
+class Permission(Base):
+    __tablename__ = "permissions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    description = Column(String, nullable=True)
+    roles = relationship("Role", secondary=role_permissions, back_populates="permissions")
 
 class Role(Base):
     __tablename__ = "roles"
@@ -10,6 +26,7 @@ class Role(Base):
     name = Column(String, unique=True, index=True)
     description = Column(String, nullable=True)
     users = relationship("User", back_populates="role")
+    permissions = relationship("Permission", secondary=role_permissions, back_populates="roles")
 
     @classmethod
     def get_default_role(cls, db):

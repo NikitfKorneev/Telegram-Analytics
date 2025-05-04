@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from . import schemas, crud, models, utils
 from .database import get_db
 from .dependencies import get_current_active_user
+from .decorators import require_permission
 import os
 
 router = APIRouter(tags=["auth"])
@@ -59,6 +60,7 @@ async def login_for_access_token(
         )
 
 @router.get("/users/me")
+@require_permission("view_profile")
 async def read_users_me(current_user: models.User = Depends(utils.get_current_user)):
     try:
         return current_user
@@ -69,6 +71,7 @@ async def read_users_me(current_user: models.User = Depends(utils.get_current_us
         )
 
 @router.post("/files/")
+@require_permission("create_file")
 async def create_file(
     file: schemas.FileCreate,
     current_user: models.User = Depends(utils.get_current_user),
@@ -83,6 +86,7 @@ async def create_file(
         )
 
 @router.get("/files/{file_id}")
+@require_permission("view_file")
 async def read_file(
     file_id: int,
     current_user: models.User = Depends(utils.get_current_user),
@@ -92,8 +96,13 @@ async def read_file(
         file = crud.get_file(db, file_id=file_id)
         if file is None:
             raise HTTPException(status_code=404, detail="File not found")
+        
+        # Проверяем права доступа к файлу
         if file.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Not enough permissions")
+            # Проверяем, есть ли у пользователя право просматривать все файлы
+            if "view_all_files" not in [p.name for p in current_user.role.permissions]:
+                raise HTTPException(status_code=403, detail="Not enough permissions")
+        
         return file
     except Exception as e:
         return JSONResponse(
@@ -102,6 +111,7 @@ async def read_file(
         )
 
 @router.delete("/files/{file_id}")
+@require_permission("delete_file")
 async def delete_file(
     file_id: int,
     db: Session = Depends(get_db),
@@ -109,8 +119,14 @@ async def delete_file(
 ):
     try:
         file = crud.get_file(db, file_id)
-        if not file or file.owner_id != current_user.id:
+        if not file:
             raise HTTPException(status_code=404, detail="File not found")
+        
+        # Проверяем права доступа к файлу
+        if file.owner_id != current_user.id:
+            # Проверяем, есть ли у пользователя право управлять всеми файлами
+            if "manage_system" not in [p.name for p in current_user.role.permissions]:
+                raise HTTPException(status_code=403, detail="Not enough permissions")
         
         if crud.delete_file(db, file_id):
             return {"message": "File deleted successfully"}
@@ -120,3 +136,75 @@ async def delete_file(
             status_code=500,
             content={"detail": str(e)}
         )
+
+# Добавляем новые эндпоинты для управления пользователями (только для админов)
+@router.get("/users/")
+@require_permission("manage_users")
+async def get_users(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    users = crud.get_users(db, skip=skip, limit=limit)
+    return users
+
+@router.put("/users/{user_id}")
+@require_permission("manage_users")
+async def update_user_role(
+    user_id: int,
+    role_id: int,
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    role = db.query(models.Role).filter(models.Role.id == role_id).first()
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    user.role_id = role_id
+    db.commit()
+    db.refresh(user)
+    return user
+
+@router.delete("/users/{user_id}")
+@require_permission("manage_users")
+async def delete_user(
+    user_id: int,
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Нельзя удалить самого себя
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    crud.delete_user(db, user_id)
+    return {"message": "User deleted successfully"}
+
+@router.post("/users/{user_id}/reset-password")
+@require_permission("manage_users")
+async def reset_user_password(
+    user_id: int,
+    current_user: models.User = Depends(utils.get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Нельзя сбросить пароль самому себе
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot reset your own password")
+    
+    user = crud.get_user(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Сбрасываем пароль на "0000"
+    user.hashed_password = utils.get_password_hash("0000")
+    db.commit()
+    db.refresh(user)
+    return {"message": "Password reset successfully"}

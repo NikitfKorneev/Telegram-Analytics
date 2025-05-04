@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from typing import List, Optional
 from . import models, schemas
@@ -6,17 +6,19 @@ from .utils import get_password_hash, verify_password
 from fastapi import HTTPException
 from datetime import datetime
 
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).options(
+        joinedload(models.User.role).joinedload(models.Role.permissions)
+    ).offset(skip).limit(limit).all()
+
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
-
-def get_user_by_username(db: Session, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
 
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.User).offset(skip).limit(limit).all()
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
 
 def search_users(db: Session, query: str) -> List[models.User]:
     """Поиск пользователей по имени или email"""
@@ -94,7 +96,7 @@ def toggle_user_status(db: Session, user_id: int) -> Optional[models.User]:
     if not user:
         return None
     
-    user.disabled = not user.disabled
+    user.is_active = not user.is_active
     db.commit()
     db.refresh(user)
     return user
@@ -110,7 +112,9 @@ def get_files_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100
 
 def create_file(db: Session, file: schemas.FileCreate, user_id: int):
     db_file = models.File(
-        **file.dict(),
+        filename=file.filename,
+        content=file.content,
+        is_public=file.is_public,
         owner_id=user_id,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
@@ -131,8 +135,9 @@ def update_file(db: Session, file_id: int, file: schemas.FileUpdate):
     return db_file
 
 def delete_file(db: Session, file_id: int):
-    db_file = get_file(db, file_id)
-    if db_file:
-        db.delete(db_file)
+    file = get_file(db, file_id)
+    if file:
+        db.delete(file)
         db.commit()
-    return db_file
+        return True
+    return False
