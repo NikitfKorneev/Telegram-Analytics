@@ -44,6 +44,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from auth.permissions import require_permission
 
+
 models.Base.metadata.create_all(bind=engine)
 
 # Flag for tracking application state
@@ -218,6 +219,8 @@ async def register_user(
     
     try:
         db_user = crud.create_user(db, user)
+        # Сохраняем email пользователя в сессии
+        request.session['username'] = db_user.email
         return RedirectResponse(url="/", status_code=303)
     except Exception as e:
         return templates.TemplateResponse(
@@ -229,7 +232,8 @@ async def register_user(
 @app.post("/auth/token")
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None
 ):
     user = crud.authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -238,6 +242,11 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Сохраняем email пользователя в сессии
+    request.session['username'] = user.email
+    print(f"Debug - User authenticated: {user.email}")
+    print(f"Debug - Session data after login: {request.session}")
     
     access_token = utils.create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
@@ -280,47 +289,57 @@ async def websocket_endpoint(websocket: WebSocket):
 history_dir = Path('history')
 history_dir.mkdir(exist_ok=True)
 
-def save_to_history(filename, params):
+def save_to_history(filename, params, request):
     """Сохраняет информацию о генерации в историю"""
-    history_file = history_dir / 'history.json'
-    history = []
-    
-    # Создаем директорию, если она не существует
-    history_dir.mkdir(exist_ok=True)
-    
-    # Читаем существующую историю, если файл существует
-    if history_file.exists():
-        try:
-            with open(history_file, 'r', encoding='utf-8') as f:
-                history = json.load(f)
-        except json.JSONDecodeError:
-            # Если файл поврежден, начинаем с пустого списка
-            history = []
-    
-    # Создаем новую запись
-    history_item = {
-        'id': str(uuid.uuid4()),
-        'timestamp': datetime.now().isoformat(),
-        'filename': filename,
-        'params': params
-    }
-    
-    # Добавляем новую запись в начало списка
-    history.insert(0, history_item)
-    
-    # Сохраняем обновленную историю
     try:
+        print(f"Debug - Starting save_to_history with filename: {filename}")
+        print(f"Debug - Parameters: {params}")
+        
+        history_file = history_dir / 'history.json'
+        history = []
+        
+        # Создаем директорию, если она не существует
+        history_dir.mkdir(exist_ok=True)
+        print(f"Debug - History directory exists: {history_dir.exists()}")
+        
+        # Читаем существующую историю, если файл существует
+        if history_file.exists():
+            try:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                print(f"Debug - Loaded existing history with {len(history)} items")
+            except json.JSONDecodeError:
+                print("Debug - Error reading history file, starting with empty list")
+                history = []
+        
+        # Создаем новую запись без min_word_length
+        history_item = {
+            'id': str(uuid.uuid4()),
+            'timestamp': datetime.now().isoformat(),
+            'filename': filename,
+            'params': {
+                'start_date': params.get('start_date', ''),
+                'end_date': params.get('end_date', '')
+            }
+        }
+        print(f"Debug - Created new history item: {history_item}")
+        
+        # Добавляем новую запись в начало списка
+        history.insert(0, history_item)
+        
+        # Сохраняем обновленную историю
         with open(history_file, 'w', encoding='utf-8') as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
+            print(f"Debug - History saved successfully to {history_file}")
+        
+        return history_item['id']
     except Exception as e:
-        print(f"Error saving history: {str(e)}")
+        print(f"Error in save_to_history: {str(e)}")
         return None
-    
-    return history_item['id']
 
 @app.get("/get_history_list")
 async def get_history_list():
-    """Возвращает список истории генерации"""
+    """Возвращает список истории генерации"""    
     history_file = history_dir / 'history.json'
     if not history_file.exists():
         return JSONResponse([])
@@ -353,40 +372,60 @@ async def load_history(history_id: str, request: Request):
 @app.post("/update_analysis")
 async def update_analysis(request: Request):
     """Обновляет параметры анализа"""
-    data = await request.json()
-    
-    # Получаем текущий файл из сессии
-    filename = request.session.get('current_file')
-    if not filename:
-        raise HTTPException(status_code=404, detail="Файл не найден")
-    
-    # Сохраняем новые параметры в сессию
-    request.session['analysis_params'] = {
-        'min_word_length': data.get('min_word_length', 5),
-        'start_date': data.get('start_date'),
-        'end_date': data.get('end_date')
-    }
-    
-    # Сохраняем в историю
-    save_to_history(filename, request.session['analysis_params'])
-    
-    return RedirectResponse(url=f"/get_history?filename={filename}")
+    try:
+        data = await request.json()
+        print("Debug - update_analysis called with data:", data)
+        
+        # Получаем текущий файл из сессии
+        filename = request.session.get('current_file')
+        print(f"Debug - Current file from session: {filename}")
+        
+        if not filename:
+            raise HTTPException(status_code=404, detail="Файл не найден")
+        
+        # Сохраняем новые параметры в сессию (без min_word_length)
+        request.session['analysis_params'] = {
+            'start_date': data.get('start_date'),
+            'end_date': data.get('end_date')
+        }
+        print(f"Debug - Updated session params: {request.session['analysis_params']}")
+        
+        # Сохраняем в историю
+        history_id = save_to_history(filename, request.session['analysis_params'], request)
+        print(f"Debug - History saved with ID: {history_id}")
+        
+        return RedirectResponse(url=f"/get_history?filename={filename}")
+    except Exception as e:
+        print(f"Error in update_analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get_history")
 async def get_history(request: Request, filename: str):
-    if not os.path.exists(filename):
-        return RedirectResponse(url="/")
-
     try:
+        print(f"Debug - get_history called with filename: {filename}")
+        
+        if not os.path.exists(filename):
+            print(f"Debug - File not found: {filename}")
+            return RedirectResponse(url="/")
+
         # Получаем параметры из сессии или используем значения по умолчанию
         params = request.session.get('analysis_params', {})
-        min_word_length = params.get('min_word_length', 5)
         
         # Сохраняем имя файла в сессии
         request.session['current_file'] = filename
+        print(f"Debug - Saved filename to session: {filename}")
+        
+        # Сохраняем в историю при первом открытии файла
+        if not params:
+            params = {
+                'start_date': '',
+                'end_date': ''
+            }
+            history_id = save_to_history(filename, params, request)
+            print(f"Debug - Initial history saved with ID: {history_id}")
         
         word_count = count_words_in_file(filename)
-        plots = create_plots(filename, min_word_length)
+        plots = create_plots(filename)
 
         # Создаем словарь с графиками
         plot_dict = {
@@ -402,7 +441,7 @@ async def get_history(request: Request, filename: str):
         # Проверяем, что у нас есть все 10 графиков
         for i in range(10):
             if f"plot{i}" not in plot_dict:
-                plot_dict[f"plot{i}"] = ""  # Добавляем пустую строку, если график отсутствует
+                plot_dict[f"plot{i}"] = ""
 
         return templates.TemplateResponse("stats.html", plot_dict)
     except Exception as e:
@@ -414,10 +453,26 @@ async def protected_route(current_user: User = Depends(get_current_active_user))
     return {"message": "This is a protected route", "user": current_user.username}
 
 @app.get("/download_pdf")
-async def download_pdf(request: Request):
+async def download_pdf(request: Request, history_id: str = None):
     try:
-        # Получаем имя файла из сессии
-        filename = request.session.get('current_file')
+        filename = None
+        params = None
+        
+        if history_id:
+            # Если передан ID истории, загружаем параметры из истории
+            history_file = history_dir / 'history.json'
+            if history_file.exists():
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                    history_item = next((item for item in history if item['id'] == history_id), None)
+                    if history_item:
+                        filename = history_item['filename']
+                        params = history_item['params']
+        else:
+            # Иначе используем текущий файл из сессии
+            filename = request.session.get('current_file')
+            params = request.session.get('analysis_params', {})
+
         if not filename:
             raise HTTPException(status_code=404, detail="Файл не найден")
 

@@ -23,6 +23,11 @@
         .plot-img {
             max-width: 100%;
             height: auto;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .plot-img:hover {
+            transform: scale(1.02);
         }
         .stat-card {
             background: #f5f5f5;
@@ -37,9 +42,12 @@
             margin-bottom: 20px;
         }
         .history-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         .history-item:hover {
             background-color: #f8f9fa;
@@ -500,6 +508,98 @@
             color: #ffffff;
             border-color: #80bdff;
         }
+
+        /* Modal styles for image preview */
+        .image-preview-modal .modal-dialog {
+            width: 1200px;
+            height: 1000px;
+            margin: 1.75rem auto;
+            max-width: none;
+        }
+        .image-preview-modal .modal-content {
+            background-color: rgba(0, 0, 0, 0.9);
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+        .image-preview-modal .modal-body {
+            padding: 0;
+            text-align: center;
+            height: calc(100% - 60px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .image-preview-modal img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .image-preview-modal .modal-header {
+            border: none;
+            position: absolute;
+            right: 0;
+            z-index: 1;
+            padding: 1rem;
+        }
+        .image-preview-modal .btn-close {
+            background-color: white;
+            opacity: 0.8;
+            padding: 1rem;
+            margin: 0;
+        }
+        .image-preview-modal .btn-close:hover {
+            opacity: 1;
+        }
+
+        /* Стили для кликабельных изображений */
+        .card img.plot-img {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .card img.plot-img:hover {
+            transform: scale(1.02);
+        }
+
+        .history-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .history-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .history-username {
+            color: #2196F3;
+            font-weight: 500;
+        }
+
+        .history-item-content {
+            margin-bottom: 15px;
+        }
+
+        .history-item-content ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 5px 0;
+        }
+
+        .history-item-content li {
+            color: #666;
+            font-size: 0.9em;
+            margin: 3px 0;
+        }
+
+        .history-item button {
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -519,6 +619,7 @@
     <!-- Main Content -->
     <main class="stats-content">
         <h1 class="text-center mb-4">Результаты анализа</h1>
+
         <div class="telegram-status {{ 'available' if telegram_available else 'unavailable' }}">
             <p class="mb-0">
                 {% if telegram_available %}
@@ -544,7 +645,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Активность по месяцам и дням</h5>
-                                <img src="data:image/png;base64,{{ plot0 }}" class="img-fluid" alt="Активность по месяцам и дням">
+                                <img src="data:image/png;base64,{{ plot0 }}" class="img-fluid plot-img" alt="Активность по месяцам и дням">
                             </div>
                         </div>
                     </div>
@@ -554,7 +655,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Распределение сообщений по часам суток</h5>
-                                <img src="data:image/png;base64,{{ plot1 }}" class="img-fluid" alt="Распределение сообщений по часам">
+                                <img src="data:image/png;base64,{{ plot1 }}" class="img-fluid plot-img" alt="Распределение сообщений по часам">
                             </div>
                         </div>
                     </div>
@@ -564,7 +665,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Распределение длины сообщений</h5>
-                                <img src="data:image/png;base64,{{ plot2 }}" class="img-fluid" alt="Распределение длины сообщений">
+                                <img src="data:image/png;base64,{{ plot2 }}" class="img-fluid plot-img" alt="Распределение длины сообщений">
                             </div>
                         </div>
                     </div>
@@ -574,7 +675,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Топ-10 самых активных участников</h5>
-                                <img src="data:image/png;base64,{{ plot3 }}" class="img-fluid" alt="Топ-10 активных участников">
+                                <img src="data:image/png;base64,{{ plot3 }}" class="img-fluid plot-img" alt="Топ-10 активных участников">
                             </div>
                         </div>
                     </div>
@@ -584,7 +685,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Облако слов</h5>
-                                <img src="data:image/png;base64,{{ plot4 }}" class="img-fluid" alt="Облако слов">
+                                <img src="data:image/png;base64,{{ plot4 }}" class="img-fluid plot-img" alt="Облако слов">
                             </div>
                         </div>
                     </div>
@@ -594,7 +695,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Эмоциональный окрас сообщений</h5>
-                                <img src="data:image/png;base64,{{ plot5 }}" class="img-fluid" alt="Эмоциональный окрас">
+                                <img src="data:image/png;base64,{{ plot5 }}" class="img-fluid plot-img" alt="Эмоциональный окрас">
                             </div>
                         </div>
                     </div>
@@ -604,7 +705,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Распределение длины слов</h5>
-                                <img src="data:image/png;base64,{{ plot6 }}" class="img-fluid" alt="Распределение длины слов">
+                                <img src="data:image/png;base64,{{ plot6 }}" class="img-fluid plot-img" alt="Распределение длины слов">
                             </div>
                         </div>
                     </div>
@@ -614,7 +715,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Активность по дням недели</h5>
-                                <img src="data:image/png;base64,{{ plot7 }}" class="img-fluid" alt="Активность по дням недели">
+                                <img src="data:image/png;base64,{{ plot7 }}" class="img-fluid plot-img" alt="Активность по дням недели">
                             </div>
                         </div>
                     </div>
@@ -624,7 +725,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Средняя длина сообщений по отправителям</h5>
-                                <img src="data:image/png;base64,{{ plot8 }}" class="img-fluid" alt="Средняя длина сообщений">
+                                <img src="data:image/png;base64,{{ plot8 }}" class="img-fluid plot-img" alt="Средняя длина сообщений">
                             </div>
                         </div>
                     </div>
@@ -634,7 +735,7 @@
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Активность по времени суток</h5>
-                                <img src="data:image/png;base64,{{ plot9 }}" class="img-fluid" alt="Активность по времени суток">
+                                <img src="data:image/png;base64,{{ plot9 }}" class="img-fluid plot-img" alt="Активность по времени суток">
                             </div>
                         </div>
                     </div>
@@ -726,6 +827,20 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     <button type="button" class="btn btn-primary" id="applyChanges">Применить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для предпросмотра изображений -->
+    <div class="modal fade image-preview-modal" id="imagePreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <img src="" alt="Preview" id="previewImage">
                 </div>
             </div>
         </div>
@@ -933,6 +1048,8 @@
                     // Показываем историю для админов и супер-пользователей
                     if (permissions.includes('manage_users') || permissions.includes('view_history')) {
                         document.getElementById('history-tab').style.display = 'block';
+                        // Загружаем историю при открытии вкладки
+                        document.getElementById('history-tab').addEventListener('shown.bs.tab', loadHistory);
                     } else {
                         document.getElementById('history-tab').style.display = 'none';
                     }
@@ -952,28 +1069,41 @@
         document.getElementById('changeDataModal').addEventListener('show.bs.modal', checkAdminAccess);
 
         // Функция для загрузки истории
-        async function loadHistory() {
-            try {
-                const response = await fetch('/get_history_list');
-                const history = await response.json();
-                const historyList = document.getElementById('historyList');
-                historyList.innerHTML = '';
-                
-                history.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'history-item';
-                    div.innerHTML = `
-                        <div class="d-flex justify-content-between">
-                            <span>${new Date(item.timestamp).toLocaleString()}</span>
-                            <span>${item.filename}</span>
-                        </div>
-                    `;
-                    div.onclick = () => loadHistoryItem(item.id);
-                    historyList.appendChild(div);
-                });
-            } catch (error) {
-                console.error('Ошибка загрузки истории:', error);
-            }
+        function loadHistory() {
+            fetch('/get_history_list')
+                .then(response => response.json())
+                .then(history => {
+                    const historyList = document.getElementById('historyList');
+                    historyList.innerHTML = '';
+                    
+                    history.forEach(item => {
+                        const date = new Date(item.timestamp).toLocaleString('ru-RU');
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'history-item';
+                        historyItem.innerHTML = `
+                            <div class="history-item-header">
+                                <span class="history-date">${date}</span>
+                            </div>
+                            <div class="history-item-content">
+                                <p><strong>Файл:</strong> ${item.filename}</p>
+                                <ul>
+                                    ${item.params.start_date ? `<li>Начальная дата: ${item.params.start_date}</li>` : ''}
+                                    ${item.params.end_date ? `<li>Конечная дата: ${item.params.end_date}</li>` : ''}
+                                </ul>
+                                <div class="history-item-actions">
+                                    
+                                    <button onclick="downloadHistoryItem('${item.id}')" class="btn btn-secondary">Скачать PDF</button>
+                                </div>
+                            </div>
+                        `;
+                        historyList.appendChild(historyItem);
+                    });
+                })
+                .catch(error => console.error('Error loading history:', error));
+        }
+
+        function downloadHistoryItem(id) {
+            window.location.href = `/download_pdf?history_id=${id}`;
         }
 
         // Функция для загрузки элемента истории
@@ -1070,6 +1200,29 @@
             localStorage.removeItem('token');
             localStorage.removeItem('username');
             window.location.reload();
+        });
+
+        // Добавляем обработчик клика по изображениям
+        document.addEventListener('DOMContentLoaded', function() {
+            const images = document.querySelectorAll('.card img.plot-img');
+            const previewModal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
+            const previewImage = document.getElementById('previewImage');
+
+            images.forEach(img => {
+                img.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    previewImage.src = this.src;
+                    previewModal.show();
+                });
+            });
+
+            // Закрытие модального окна по клику вне изображения
+            document.getElementById('imagePreviewModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    previewModal.hide();
+                }
+            });
         });
     </script>
 </body>
