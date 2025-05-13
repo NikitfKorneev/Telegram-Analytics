@@ -93,23 +93,41 @@ telegram_auth = TelegramAuth(api_id, api_hash, session_name)
 pdfmetrics.registerFont(TTFont('DejaVuSans', 'DejaVuSans.ttf'))
 pdfmetrics.registerFont(TTFont('DejaVuSans-Bold', 'DejaVuSans-Bold.ttf'))
 
-def get_word_frequency(filename, min_word_length=5):
-    with open(filename, 'r', encoding='utf-8') as file:
-        text = file.read()
-        # Извлекаем слова, игнорируя специальные символы и числа
-        words = re.findall(r'\b[а-яА-ЯёЁ]{' + str(min_word_length) + ',}\b', text)
-        return Counter(words).most_common(20)
+def get_word_frequency(filename, min_word_length=None):
+    """Получает частоту слов из файла"""
+    if min_word_length is None:
+        min_word_length = 100  # Значение по умолчанию только если не указано пользователем
+    try:
+        with open(filename, 'r', encoding='utf-8') as file:
+            text = file.read()
+            # Извлекаем слова, игнорируя специальные символы и числа
+            words = re.findall(r'\b[а-яА-ЯёЁ]{' + str(min_word_length) + ',}\b', text)
+            return Counter(words).most_common(20)
+    except Exception as e:
+        print(f"Error in get_word_frequency: {str(e)}")
+        return []
 
-async def get_chat_history(chat_name, websocket, start_date=None, end_date=None):
+async def get_chat_history(chat_name, websocket, start_date=None, end_date=None, min_word_length=None):
     try:
         if not telegram_auth.client.is_connected():
             await telegram_auth.client.connect()
 
+        # Получаем информацию о чате
+        chat = await telegram_auth.client.get_entity(chat_name)
+        
+        # Создаем имя файла для истории
+        filename = f"chat_history_{chat.id}.txt"
+        
+        # Сохраняем параметры в историю
+        history_id = save_to_history(filename, {
+            'min_word_length': min_word_length,
+            'start_date': start_date.strftime('%Y-%m-%d') if start_date else '',
+            'end_date': end_date.strftime('%Y-%m-%d') if end_date else ''
+        }, None)
+        
+        # Получаем историю сообщений
         await websocket.send_json({"status": "started", "message": "Получаем информацию о чате..."})
         
-        chat = await telegram_auth.client.get_entity(chat_name)
-        filename = f"chat_history_{chat.id if hasattr(chat, 'id') else chat_name.strip('@')}.txt"
-
         with open(filename, 'w', encoding='utf-8') as file:
             offset_id = 0
             limit = 100
@@ -149,7 +167,8 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
                     "status": "loading",
                     "filename": filename,
                     "loaded": total_messages,
-                    "total": total_count
+                    "total": total_count,
+                    "min_word_length": min_word_length  # Добавляем min_word_length в ответ
                 })
 
                 offset_id = history.messages[-1].id
@@ -159,7 +178,8 @@ async def get_chat_history(chat_name, websocket, start_date=None, end_date=None)
                 "progress": 100,
                 "status": "completed",
                 "filename": filename,
-                "message": "Загрузка завершена"
+                "message": "Загрузка завершена",
+                "min_word_length": min_word_length  # Добавляем min_word_length в ответ
             })
 
     except Exception as e:
@@ -267,16 +287,19 @@ async def websocket_endpoint(websocket: WebSocket):
 
         start_date = None
         end_date = None
+        min_word_length = None
         try:
             if data.get("start_date"):
                 start_date = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
             if data.get("end_date"):
                 end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
+            if data.get("min_word_length"):
+                min_word_length = int(data["min_word_length"])
         except ValueError as e:
-            await websocket.send_json({"status": "error", "message": f"Неверный формат даты: {str(e)}"})
+            await websocket.send_json({"status": "error", "message": f"Неверный формат данных: {str(e)}"})
             return
 
-        await get_chat_history(data["chat_name"], websocket, start_date, end_date)
+        await get_chat_history(data["chat_name"], websocket, start_date, end_date, min_word_length)
         
     except json.JSONDecodeError:
         await websocket.send_json({"status": "error", "message": "Неверный формат данных"})
@@ -312,12 +335,13 @@ def save_to_history(filename, params, request):
                 print("Debug - Error reading history file, starting with empty list")
                 history = []
         
-        # Создаем новую запись без min_word_length
+        # Создаем новую запись с min_word_length
         history_item = {
             'id': str(uuid.uuid4()),
             'timestamp': datetime.now().isoformat(),
             'filename': filename,
             'params': {
+                'min_word_length': params.get('min_word_length', 5),
                 'start_date': params.get('start_date', ''),
                 'end_date': params.get('end_date', '')
             }
@@ -374,7 +398,9 @@ async def update_analysis(request: Request):
     """Обновляет параметры анализа"""
     try:
         data = await request.json()
-        print("Debug - update_analysis called with data:", data)
+        print("Debug - Raw request data:", data)
+        print("Debug - min_word_length type:", type(data.get('min_word_length')))
+        print("Debug - min_word_length value:", data.get('min_word_length'))
         
         # Получаем текущий файл из сессии
         filename = request.session.get('current_file')
@@ -383,8 +409,16 @@ async def update_analysis(request: Request):
         if not filename:
             raise HTTPException(status_code=404, detail="Файл не найден")
         
-        # Сохраняем новые параметры в сессию (без min_word_length)
+        # Сохраняем новые параметры в сессию
+        try:
+            min_word_length = int(data.get('min_word_length', 7))  # Используем 7 как значение по умолчанию
+            print(f"Debug - Successfully converted min_word_length to int: {min_word_length}")
+        except (ValueError, TypeError) as e:
+            print(f"Debug - Error converting min_word_length: {e}")
+            min_word_length = 7  # Используем значение по умолчанию в случае ошибки
+        
         request.session['analysis_params'] = {
+            'min_word_length': min_word_length,
             'start_date': data.get('start_date'),
             'end_date': data.get('end_date')
         }
@@ -394,15 +428,16 @@ async def update_analysis(request: Request):
         history_id = save_to_history(filename, request.session['analysis_params'], request)
         print(f"Debug - History saved with ID: {history_id}")
         
-        return RedirectResponse(url=f"/get_history?filename={filename}")
+        return RedirectResponse(url=f"/get_history?filename={filename}", status_code=303)
     except Exception as e:
         print(f"Error in update_analysis: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get_history")
-async def get_history(request: Request, filename: str):
+async def get_history(request: Request, filename: str, min_word_length: int = None):
     try:
         print(f"Debug - get_history called with filename: {filename}")
+        print(f"Debug - min_word_length from URL: {min_word_length}")
         
         if not os.path.exists(filename):
             print(f"Debug - File not found: {filename}")
@@ -410,22 +445,38 @@ async def get_history(request: Request, filename: str):
 
         # Получаем параметры из сессии или используем значения по умолчанию
         params = request.session.get('analysis_params', {})
+        print(f"Debug - Parameters from session: {params}")
         
         # Сохраняем имя файла в сессии
         request.session['current_file'] = filename
         print(f"Debug - Saved filename to session: {filename}")
         
+        # Используем min_word_length из URL или из сессии, или значение по умолчанию
+        if min_word_length is not None:
+            params['min_word_length'] = min_word_length
+        elif 'min_word_length' not in params:
+            params['min_word_length'] = 5  # Значение по умолчанию
+        
         # Сохраняем в историю при первом открытии файла
         if not params:
             params = {
                 'start_date': '',
-                'end_date': ''
+                'end_date': '',
+                'min_word_length': min_word_length or 5
             }
             history_id = save_to_history(filename, params, request)
             print(f"Debug - Initial history saved with ID: {history_id}")
         
         word_count = count_words_in_file(filename)
-        plots = create_plots(filename)
+        # Передаем параметры в create_plots
+        print(f"Debug - Passing min_word_length to create_plots: {params['min_word_length']}")
+        
+        plots = create_plots(
+            filename,
+            min_word_length=params['min_word_length'],
+            start_date=params.get('start_date'),
+            end_date=params.get('end_date')
+        )
 
         # Создаем словарь с графиками
         plot_dict = {
@@ -482,7 +533,13 @@ async def download_pdf(request: Request, history_id: str = None):
 
         # Получаем количество слов и графики
         word_count = count_words_in_file(filename)
-        plots = create_plots(filename)
+        # Передаем параметры в create_plots
+        plots = create_plots(
+            filename,
+            min_word_length=params.get('min_word_length'),  # Получаем значение из параметров
+            start_date=params.get('start_date'),
+            end_date=params.get('end_date')
+        )
 
         # Создаем PDF
         pdf_path, pdf_filename = create_pdf(filename, plots, word_count)

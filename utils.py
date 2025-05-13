@@ -19,7 +19,22 @@ def count_words_in_file(filepath):
         print(f"Error counting words: {str(e)}")
         return 0
 
-def create_plots(filepath, min_word_length=5):
+def create_plots(filepath, min_word_length=None, start_date=None, end_date=None):
+    """Создает графики для анализа чата"""
+    print(f"Debug - create_plots called with min_word_length: {min_word_length}")
+    
+    # Проверяем, что min_word_length передан
+    if min_word_length is None:
+        min_word_length = 5  # Значение по умолчанию
+    
+    try:
+        min_word_length = int(min_word_length)
+    except (ValueError, TypeError) as e:
+        print(f"Debug - Error converting min_word_length: {e}")
+        min_word_length = 5  # Значение по умолчанию в случае ошибки
+    
+    print(f"Debug - Using min_word_length: {min_word_length}")
+    
     plots = []
     word_list = []  # Store words for PDF
 
@@ -57,6 +72,13 @@ def create_plots(filepath, min_word_length=5):
                 message = sender_message[1].strip()
 
                 date = date_time[0]
+                
+                # Проверяем дату
+                if start_date and date < start_date:
+                    continue
+                if end_date and date > end_date:
+                    continue
+
                 time_parts = date_time[1].split(':')
                 if len(time_parts) < 1:
                     continue

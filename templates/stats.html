@@ -1123,9 +1123,26 @@
             const activeTab = document.querySelector('.tab-pane.active');
             
             if (activeTab.id === 'analysis') {
-                const minWordLength = document.getElementById('min_word_length').value;
+                const minWordLengthInput = document.getElementById('min_word_length');
+                const minWordLength = parseInt(minWordLengthInput.value);
+                console.log('Debug - Raw input value:', minWordLengthInput.value);
+                console.log('Debug - Parsed min_word_length:', minWordLength);
+                
+                if (isNaN(minWordLength) || minWordLength < 1) {
+                    console.error('Invalid min_word_length value');
+                    alert('Пожалуйста, введите корректное значение для минимальной длины слова (минимум 1)');
+                    return;
+                }
+                
                 const startDate = document.getElementById('start_date').value;
                 const endDate = document.getElementById('end_date').value;
+
+                const data = {
+                    min_word_length: minWordLength,
+                    start_date: startDate,
+                    end_date: endDate
+                };
+                console.log('Debug - Sending data to server:', data);
 
                 try {
                     const response = await fetch('/update_analysis', {
@@ -1133,18 +1150,19 @@
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            min_word_length: parseInt(minWordLength),
-                            start_date: startDate,
-                            end_date: endDate
-                        })
+                        body: JSON.stringify(data)
                     });
 
                     if (response.ok) {
                         window.location.reload();
+                    } else {
+                        const errorData = await response.json();
+                        console.error('Server response not OK:', response.status, errorData);
+                        alert(errorData.detail || 'Ошибка при обновлении параметров анализа');
                     }
                 } catch (error) {
                     console.error('Ошибка обновления данных:', error);
+                    alert('Ошибка при обновлении параметров анализа');
                 }
             } else if (activeTab.id === 'password') {
                 const email = document.getElementById('email').value;

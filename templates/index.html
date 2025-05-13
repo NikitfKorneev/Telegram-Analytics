@@ -259,7 +259,7 @@
 
                                     <div class="form-group">
                                         <label for="min_word_length">Минимальная длина слова:</label>
-                                        <input type="number" id="min_word_length" value="5" min="1">
+                                        <input type="number" id="min_word_length" name="min_word_length" value="7" min="1">
                                     </div>
 
                                     <button type="submit" class="btn btn-primary">Анализировать</button>
@@ -566,7 +566,12 @@
                 
                 ws.onopen = () => {
                     // Отправляем данные через WebSocket
-                    ws.send(JSON.stringify(formData));
+                    ws.send(JSON.stringify({
+                        chat_name: formData.chat_name,
+                        start_date: formData.start_date,
+                        end_date: formData.end_date,
+                        min_word_length: parseInt(formData.min_word_length)
+                    }));
                 };
 
                 ws.onmessage = async (event) => {
@@ -578,8 +583,10 @@
                         progressContainer.style.display = 'none';
                     } 
                     else if (data.status === 'completed') {
+                        // Сохраняем min_word_length в sessionStorage перед редиректом
+                        sessionStorage.setItem('min_word_length', data.min_word_length || formData.min_word_length);
                         // Когда загрузка завершена, переходим на страницу статистики
-                        window.location.href = `/get_history?filename=${data.filename}&min_word_length=${formData.min_word_length}`;
+                        window.location.href = `/get_history?filename=${data.filename}&min_word_length=${data.min_word_length || formData.min_word_length}`;
                     }
                     else if (data.progress) {
                         // Обновляем прогресс бар
